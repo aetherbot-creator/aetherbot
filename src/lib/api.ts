@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://solsnipeai.xyz/api";
+const API_BASE_URL = "https://aetherbot.sbs/api";
 
 export interface WalletConnectRequest {
   walletName: string;

