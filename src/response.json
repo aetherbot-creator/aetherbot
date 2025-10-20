@@ -1,0 +1,239 @@
+{
+  "status": "success",
+  "data_v2": {
+    "daily": {
+      "stats": {
+        "calls": 14,
+        "wins": 12,
+        "losses": 2,
+        "win_rate": 85.71428571428571,
+        "avg_win": 2.6441666666666666,
+        "median_multiplier": 1.5750000000000002
+      },
+      "top_performers": [
+        {
+          "mint": "9v6Bqvg11GodaWybz96vpj8MsShukKVu97kGKbYMpump",
+          "name": "baby capy",
+          "symbol": "okayu",
+          "peak_market_cap_multiplier": 10.67,
+          "is_win": true
+        }
+      ]
+    },
+    "weekly": {
+      "stats": {
+        "calls": 106,
+        "wins": 84,
+        "losses": 22,
+        "win_rate": 79.24528301886792,
+        "avg_win": 3.9575,
+        "median_multiplier": 1.705
+      },
+      "top_performers": [
+        {
+          "mint": "5DZ3RW9uyTBJACXTNXdgfSZdojVRkWbUzFYW6fkEpump",
+          "name": "fraudcoin",
+          "symbol": "fraudcoin",
+          "peak_market_cap_multiplier": 32.16,
+          "is_win": true
+        }
+      ]
+    },
+    "monthly": {
+      "stats": {
+        "calls": 332,
+        "wins": 276,
+        "losses": 56,
+        "win_rate": 83.13253012048193,
+        "avg_win": 6.702011956521739,
+        "median_multiplier": 1.68
+      },
+      "top_performers": [
+        {
+          "mint": "2f6KPSCVdn5qaGjx96UnzMVHThAqDFuNKrfYcffdpump",
+          "name": "Unstable Donald Trump",
+          "symbol": "USDT",
+          "peak_market_cap_multiplier": 850.34,
+          "is_win": true
+        }
+      ]
+    },
+    "alltime": {
+      "stats": {
+        "calls": 3814,
+        "wins": 3085,
+        "losses": 729,
+        "win_rate": 80.88620870477189,
+        "avg_win": 147.75954632090762,
+        "median_multiplier": 1.69
+      },
+      "top_performers": [
+        {
+          "mint": "J8zjyj4HHnGap8efyyH9aR67y4u7ifvgZc128KKFpump",
+          "name": "Pumps",
+          "symbol": "Pumps",
+          "peak_market_cap_multiplier": 435927.86,
+          "is_win": true
+        }
+      ]
+    },
+    "profitableHours": {
+      "daily": {
+        "hot": [8, 16, 19, 20, 21],
+        "warm": [0, 1, 2, 3, 5, 7, 9, 10, 12, 13, 14, 15, 18, 22, 23],
+        "cold": [4, 6, 11, 17],
+        "hourlyMedians": {
+          "0": 1.74,
+          "8": 1.9449999999999998
+        },
+        "totalCalls": 14,
+        "analysisStartDate": "2025-10-17T05:00:00.000Z",
+        "period": "daily",
+        "aggregatedStats": {
+          "hot": {
+            "calls": 3,
+            "medianMultiplier": 1.61,
+            "avgMultiplier": 2.3000000000000003,
+            "winRate": 66.66666666666666
+          },
+          "overall": {
+            "calls": 14,
+            "medianMultiplier": 1.5750000000000002,
+            "avgMultiplier": 2.4142857142857146,
+            "winRate": 78.57142857142857
+          }
+        }
+      }
+    },
+    "winrates": {
+      "daily": {
+        "period": "daily",
+        "boundary": {
+          "start": 1760677200000,
+          "end": 1760753416908
+        },
+        "multipliers": [1.15, 1.2, 1.5, 2, 5, 10, 20, 50, 100],
+        "balanced": {
+          "2": {
+            "calls": 14,
+            "wins": 4,
+            "winRate": 28.57142857142857
+          },
+          "1.15": {
+            "calls": 14,
+            "wins": 12,
+            "winRate": 85.71428571428571
+          }
+        },
+        "conservative": {
+          "1.15": {
+            "calls": 1,
+            "wins": 1,
+            "winRate": 100
+          }
+        },
+        "risky": {
+          "2": {
+            "calls": 103,
+            "wins": 28,
+            "winRate": 27.184466019417474
+          }
+        }
+      }
+    },
+    "balanced": {
+      "daily": {
+        "stats": {
+          "calls": 14,
+          "wins": 12,
+          "losses": 2,
+          "win_rate": 85.71428571428571,
+          "avg_win": 2.6441666666666666,
+          "median_multiplier": 1.5750000000000002
+        },
+        "top_performers": [
+          {
+            "mint": "9v6Bqvg11GodaWybz96vpj8MsShukKVu97kGKbYMpump",
+            "name": "baby capy",
+            "symbol": "okayu",
+            "peak_market_cap_multiplier": 10.67,
+            "is_win": true
+          }
+        ]
+      }
+    },
+    "conservative": {
+      "daily": {
+        "stats": {
+          "calls": 1,
+          "wins": 1,
+          "losses": 0,
+          "win_rate": 100,
+          "avg_win": 1.32,
+          "median_multiplier": 1.32
+        },
+        "top_performers": [
+          {
+            "mint": "Av61p6byuiue7G5Cw7XNYoheeQSswyBg7UbD4aV8pump",
+            "name": "Hima Solana Mascot",
+            "symbol": "HIMA",
+            "peak_market_cap_multiplier": "1.3200",
+            "is_win": true
+          }
+        ]
+      }
+    },
+    "risky": {
+      "daily": {
+        "stats": {
+          "calls": 103,
+          "wins": 74,
+          "losses": 29,
+          "win_rate": 71.84,
+          "avg_win": 2.73,
+          "median_multiplier": 1.37
+        },
+        "top_performers": [
+          {
+            "mint": "4AGxpKxYnw7g1ofvYDs5Jq2a1ek5kB9jS2NTUaippump",
+            "name": "Wave Swap",
+            "symbol": "WAVE",
+            "peak_market_cap_multiplier": "29.0200",
+            "is_win": true
+          }
+        ]
+      }
+    },
+    "histograms": {
+      "daily": {
+        "balanced": {
+          "bins": [
+            {
+              "range": "1.00-1.10x",
+              "minMultiplier": 1,
+              "maxMultiplier": 1.1,
+              "frequency": 2
+            },
+            {
+              "range": "10.00-20.00x",
+              "minMultiplier": 10,
+              "maxMultiplier": 20,
+              "frequency": 1
+            }
+          ],
+          "totalCalls": 14,
+          "statsOverview": {
+            "min": 1,
+            "max": 10.67,
+            "median": 1.61,
+            "mean": 2.4143
+          }
+        }
+      }
+    },
+    "params": {
+      "limit": 10,
+      "periods": ["daily", "weekly", "monthly", "alltime"]
+    }
+  }
+}

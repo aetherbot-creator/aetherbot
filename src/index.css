@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* AetherBot Core Colors */
+    --background: 240 8% 2%;
+    --background-secondary: 240 9% 6%;
+    --foreground: 0 0% 100%;
+    
+    /* Gradient stops for core Aether energy */
+    --gradient-start: 267 100% 50%; /* Electric Violet #6F00FF */
+    --gradient-middle: 193 100% 50%; /* Neon Cyan #00D4FF */
+    --gradient-end: 193 100% 86%; /* Ice Blue #B8F7FF */
+    
+    /* Accent colors */
+    --cyber-blue: 218 100% 58%; /* #2B6EFF */
+    --deep-purple: 267 100% 44%; /* #4B00E0 */
+    --neon-teal: 166 100% 50%; /* #00FFC8 */
+    
+    /* Card and surfaces */
+    --card: 240 9% 6%;
+    --card-foreground: 0 0% 100%;
+    --card-border: 267 100% 50% / 0.2;
+    
+    --popover: 240 9% 6%;
+    --popover-foreground: 0 0% 100%;
+    
+    /* Primary - Electric Violet */
+    --primary: 267 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary - text and muted */
+    --secondary: 228 16% 71%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 240 9% 12%;
+    --muted-foreground: 228 16% 71%;
+    
+    /* Accent - Neon Cyan */
+    --accent: 193 100% 50%;
+    --accent-foreground: 240 8% 2%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 267 100% 50% / 0.15;
+    --input: 240 9% 12%;
+    --ring: 193 100% 50%;
+    
+    --radius: 0.75rem;
+    
+    /* Glow effects */
+    --glow-primary: 267 100% 50% / 0.3;
+    --glow-accent: 193 100% 50% / 0.5;
+  }
+}
+
+@layer utilities {
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#6F00FF] via-[#00D4FF] to-[#B8F7FF];
+  }
+  
+  .gradient-border {
+    position: relative;
+    background: hsl(var(--card));
+    border: 1px solid transparent;
+  }
+  
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, #6F00FF, #00D4FF, #B8F7FF);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  
+  .glow-effect {
+    box-shadow: 0 0 40px hsl(var(--glow-accent)), 0 0 80px hsl(var(--glow-primary));
+  }
+  
+  .glow-text {
+    text-shadow: 0 0 20px hsl(var(--glow-accent)), 0 0 40px hsl(var(--glow-primary));
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
