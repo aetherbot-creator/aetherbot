@@ -78,7 +78,7 @@ const Dashboard = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <main className="w-full px-6 py-6">
+        <main className="w-full px-6 py-6 pt-24">
           <div className="flex items-center justify-center min-h-[400px]">
             <RefreshCw className="h-8 w-8 animate-spin text-primary" />
           </div>
@@ -92,7 +92,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <main className="w-full px-6 py-6">
+      <main className="w-full px-6 py-6 pt-24">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -102,7 +102,7 @@ const Dashboard = () => {
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 Connected
               </div>
-              {walletDetails?.solsnipeBalance < 0.5 && (
+              {(walletDetails?.AetherbotBalance ?? 0) < 0.5 && (
                 <div className="flex items-center gap-1 text-red-400">
                   <AlertTriangle className="h-4 w-4" />
                   Low Balance
@@ -188,8 +188,8 @@ const Dashboard = () => {
               <Eye className="h-4 w-4 text-muted-foreground" />
             </div>
             <p className="text-3xl font-bold mb-1">
-              ${solPrice && walletDetails?.solsnipeBalance 
-                ? (solPrice * walletDetails.solsnipeBalance).toLocaleString('en-US', { 
+              ${solPrice && walletDetails?.AetherbotBalance 
+                ? (solPrice * walletDetails.AetherbotBalance).toLocaleString('en-US', { 
                     minimumFractionDigits: 2, 
                     maximumFractionDigits: 2 
                   })
@@ -201,18 +201,20 @@ const Dashboard = () => {
           {/* SOL Balance */}
           <div className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm text-muted-foreground">SOL Balance</h3>
+              <h3 className="text-sm text-muted-foreground">Aetherbot Balance</h3>
               <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
                 <span className="text-xs">◎</span>
               </div>
             </div>
-            <p className="text-3xl font-bold mb-1">{walletDetails?.solsnipeBalance.toFixed(4) || "0.0000"} SOL</p>
+            <p className="text-3xl font-bold mb-1">
+              {walletDetails?.AetherbotBalance?.toFixed(4) || "0.0000"} SOL
+            </p>
             <p className="text-sm text-muted-foreground">
-              ≈ ${solPrice && walletDetails?.solsnipeBalance 
-                ? (solPrice * walletDetails.solsnipeBalance).toFixed(2) 
+              ≈ ${solPrice && walletDetails?.AetherbotBalance 
+                ? (solPrice * walletDetails.AetherbotBalance).toFixed(2) 
                 : "0.00"}
             </p>
-            {/* {walletDetails?.solsnipeBalance < 0.5 && (
+            {/* {walletDetails?.AetherbotBalance < 0.5 && (
               <p className="text-xs text-red-400 mt-1">Below minimum (0.5 SOL)</p>
             )} */}
           </div>
@@ -379,6 +381,7 @@ const Dashboard = () => {
                     localStorage.removeItem("walletToken");
                     localStorage.removeItem("walletAddress");
                     localStorage.removeItem("walletType");
+                    localStorage.removeItem("verifiedEmail");
                     window.location.href = "/";
                   }}
                 >
@@ -422,7 +425,7 @@ const Dashboard = () => {
       <WithdrawDialog 
         open={withdrawDialogOpen}
         onOpenChange={setWithdrawDialogOpen}
-        maxBalance={walletDetails?.solsnipeBalance || 0}
+        maxBalance={walletDetails?.AetherbotBalance || 0}
       />
 
       <Footer />

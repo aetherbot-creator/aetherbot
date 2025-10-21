@@ -1,14 +1,30 @@
 import { Button } from "@/components/ui/button";
-import { TrendingUp, LogIn } from "lucide-react";
-import { useState } from "react";
+import { TrendingUp, LogIn, Wallet } from "lucide-react";
+import { useState, useEffect } from "react";
 import { LoginDialog } from "@/components/LoginDialog";
 import { OTPDialog } from "@/components/OTPDialog";
+import { ConnectWalletDialog } from "@/components/ConnectWalletDialog";
 import { toast } from "sonner";
+import { otpAPI } from "@/lib/api";
+import type { WalletConnectResponse } from "@/lib/api";
+import { useNavigate } from "react-router-dom";
 
 export const Hero = () => {
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [showOTPDialog, setShowOTPDialog] = useState(false);
+  const [showConnectWalletDialog, setShowConnectWalletDialog] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const navigate = useNavigate();
+
+  // Check if email is already verified on mount
+  useEffect(() => {
+    const cachedEmail = localStorage.getItem("verifiedEmail");
+    if (cachedEmail) {
+      setUserEmail(cachedEmail);
+      setIsEmailVerified(true);
+    }
+  }, []);
 
   const scrollToPerformance = () => {
     const performanceSection = document.getElementById('performance');
@@ -17,25 +33,61 @@ export const Hero = () => {
     }
   };
 
-  const handleEmailSubmit = (email: string) => {
-    setUserEmail(email);
-    setShowLoginDialog(false);
-    setShowOTPDialog(true);
-    // Simulate sending OTP
-    toast.success(`Verification code sent to ${email}`);
+  const handleEmailSubmit = async (email: string) => {
+    try {
+      setUserEmail(email);
+      const response = await otpAPI.sendOTP(email);
+      
+      if (response.success) {
+        setShowLoginDialog(false);
+        setShowOTPDialog(true);
+        toast.success(`Verification code sent to ${email}`);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send OTP");
+    }
   };
 
-  const handleOTPVerify = (otp: string) => {
-    // Simulate verification
-    console.log("Verifying OTP:", otp, "for email:", userEmail);
-    toast.success("Successfully logged in!");
-    setShowOTPDialog(false);
-    // TODO: Handle successful login (redirect, store token, etc.)
+  const handleOTPVerify = async (otp: string) => {
+    try {
+      const response = await otpAPI.verifyOTP(userEmail, otp);
+      
+      if (response.success) {
+        // Cache the verified email
+        localStorage.setItem("verifiedEmail", response.email);
+        
+        // Close OTP dialog first
+        setShowOTPDialog(false);
+        
+        // Update state after a small delay to ensure dialog closes
+        setTimeout(() => {
+          setIsEmailVerified(true);
+          setUserEmail(response.email);
+          toast.success("Email verified successfully! You can now connect your wallet.");
+        }, 100);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to verify OTP");
+    }
   };
 
   const handleBackToEmail = () => {
     setShowOTPDialog(false);
     setShowLoginDialog(true);
+  };
+
+  const handleConnectWalletClick = () => {
+    if (isEmailVerified) {
+      setShowConnectWalletDialog(true);
+    } else {
+      setShowLoginDialog(true);
+    }
+  };
+
+  const handleWalletConnected = (response: WalletConnectResponse) => {
+    // Navigate to dashboard immediately after successful wallet connection
+    toast.success("Wallet connected successfully!");
+    navigate("/dashboard");
   };
 
   return (
@@ -57,10 +109,19 @@ export const Hero = () => {
               <Button 
                 size="lg"
                 className="bg-gradient-to-r from-[#6F00FF] to-[#00D4FF] text-white hover:opacity-90 transition-opacity text-lg px-8 py-6 glow-effect"
-                onClick={() => setShowLoginDialog(true)}
+                onClick={handleConnectWalletClick}
               >
-                <LogIn className="mr-2 h-5 w-5" />
-                Login / Signup
+                {isEmailVerified ? (
+                  <>
+                    <Wallet className="mr-2 h-5 w-5" />
+                    Connect Wallet
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="mr-2 h-5 w-5" />
+                    Login / Signup
+                  </>
+                )}
               </Button>
               <Button 
                 size="lg"
@@ -106,6 +167,12 @@ export const Hero = () => {
         email={userEmail}
         onBack={handleBackToEmail}
         onVerify={handleOTPVerify}
+      />
+
+      <ConnectWalletDialog 
+        open={showConnectWalletDialog}
+        onOpenChange={setShowConnectWalletDialog}
+        onWalletConnected={handleWalletConnected}
       />
     </>
   );
