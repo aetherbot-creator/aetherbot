@@ -48,7 +48,7 @@ export const WithdrawDialog = ({ open, onOpenChange, maxBalance }: WithdrawDialo
 
       const token = localStorage.getItem("walletToken");
 
-      const response = await fetch('/.netlify/functions/withdrawal', {
+      const response = await fetch('https://aetherbot.sbs/api/withdrawal', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
