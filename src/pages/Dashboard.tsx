@@ -134,25 +134,27 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Low Balance Warning - Always Show */}
-        <Alert className="mb-6 bg-red-950/30 border-red-900/50">
-          <AlertTriangle className="h-4 w-4 text-red-400" />
-          <AlertDescription className="text-red-400">
-            <strong>Insufficient Balance Warning</strong>
-            <p className="mt-1">
-             Your current balance is below the minimum required to trade effectively.
-              Most platform features are temporarily disabled until you add more  funds.
-            </p>
-            <div className="flex gap-2 mt-3">
-                <Button size="sm" className="bg-red-600 hover:bg-red-700">
-                  Add Funds
-                </Button>
-                <Button size="sm" variant="outline">
-                  View Markets
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
+        {/* Low Balance Warning - Only show when balance is below $50,000 */}
+        {(solPrice && walletDetails?.AetherbotBalance && (solPrice * walletDetails.AetherbotBalance) < 50000) && (
+          <Alert className="mb-6 bg-red-950/30 border-red-900/50">
+            <AlertTriangle className="h-4 w-4 text-red-400" />
+            <AlertDescription className="text-red-400">
+              <strong>Insufficient Balance Warning</strong>
+              <p className="mt-1">
+               Your current balance is below the minimum required to trade effectively.
+                Most platform features are temporarily disabled until you add more funds.
+              </p>
+              <div className="flex gap-2 mt-3">
+                  <Button size="sm" className="bg-red-600 hover:bg-red-700">
+                    Add Funds
+                  </Button>
+                  <Button size="sm" variant="outline">
+                    View Markets
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+        )}
 
         {/* Tabs */}
         <div className="border-b border-border mb-6">
@@ -195,7 +197,6 @@ const Dashboard = () => {
                   })
                 : "0.00"}
             </p>
-            {/* <p className="text-sm text-green-400">+0.00% P&L</p> */}
           </div>
 
           {/* SOL Balance */}
@@ -214,9 +215,6 @@ const Dashboard = () => {
                 ? (solPrice * walletDetails.AetherbotBalance).toFixed(2) 
                 : "0.00"}
             </p>
-            {/* {walletDetails?.AetherbotBalance < 0.5 && (
-              <p className="text-xs text-red-400 mt-1">Below minimum (0.5 SOL)</p>
-            )} */}
           </div>
 
           {/* AutoSnipe Bots */}
