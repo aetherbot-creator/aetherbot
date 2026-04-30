@@ -1,7 +1,7 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Check, X } from "lucide-react";
+import { Check, X, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 
 const Pricing = () => {
@@ -72,6 +72,15 @@ const Pricing = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       <main className="w-full px-6 py-6 pt-24">
+
+        {/* Back Button */}
+        <div className="mb-8">
+          <Button variant="outline" size="sm" onClick={() => window.location.href = "/dashboard"}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold mb-4">Choose Your Plan</h1>
