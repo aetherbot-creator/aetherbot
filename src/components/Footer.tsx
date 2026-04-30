@@ -1,4 +1,13 @@
+import { useNavigate } from "react-router-dom";
+
 export const Footer = () => {
+  const navigate = useNavigate();
+
+  const handleSubscribeLink = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate("/pricing");
+  };
+
   return (
     <footer className="bg-background/80 backdrop-blur-lg border-t border-border py-8 mt-16">
       <div className="container mx-auto px-6">
@@ -19,18 +28,14 @@ export const Footer = () => {
             <h3 className="font-semibold text-foreground">Quick Links</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a href="#features" className="hover:text-accent transition-colors">
-                  Features
-                </a>
+                <a href="#features" className="hover:text-accent transition-colors">Features</a>
               </li>
               <li>
-                <a href="#performance" className="hover:text-accent transition-colors">
-                  Performance
-                </a>
+                <a href="#performance" className="hover:text-accent transition-colors">Performance</a>
               </li>
               <li>
-                <a href="#platforms" className="hover:text-accent transition-colors">
-                  Platforms
+                <a href="/pricing" onClick={handleSubscribeLink} className="hover:text-accent transition-colors">
+                  Pricing
                 </a>
               </li>
             </ul>
@@ -41,17 +46,17 @@ export const Footer = () => {
             <h3 className="font-semibold text-foreground">Resources</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a href="#" className="hover:text-accent transition-colors">
+                <a href="/pricing" onClick={handleSubscribeLink} className="hover:text-accent transition-colors">
                   Documentation
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-accent transition-colors">
+                <a href="/pricing" onClick={handleSubscribeLink} className="hover:text-accent transition-colors">
                   API Reference
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-accent transition-colors">
+                <a href="/pricing" onClick={handleSubscribeLink} className="hover:text-accent transition-colors">
                   Support
                 </a>
               </li>
@@ -63,17 +68,17 @@ export const Footer = () => {
             <h3 className="font-semibold text-foreground">Legal</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a href="#" className="hover:text-accent transition-colors">
+                <a href="/pricing" onClick={handleSubscribeLink} className="hover:text-accent transition-colors">
                   Terms of Service
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-accent transition-colors">
+                <a href="/pricing" onClick={handleSubscribeLink} className="hover:text-accent transition-colors">
                   Privacy Policy
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-accent transition-colors">
+                <a href="/pricing" onClick={handleSubscribeLink} className="hover:text-accent transition-colors">
                   Disclaimer
                 </a>
               </li>
