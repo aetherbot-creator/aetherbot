@@ -409,7 +409,7 @@ const Dashboard = () => {
               Unlock Trading, History, Bots and Alerts by upgrading your account to access the full power of Aetherbot.
             </p>
             <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-3 text-lg">
-              🥇 Subscribe Now
+              Subscribe Now
             </Button>
           </div>
         )}
