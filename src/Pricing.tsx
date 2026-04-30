@@ -1,9 +1,13 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
+import { useState } from "react";
 
 const Pricing = () => {
+  const [showModal, setShowModal] = useState(false);
+  const [selectedTier, setSelectedTier] = useState("");
+
   const tiers = [
     {
       name: "Gold",
@@ -59,6 +63,11 @@ const Pricing = () => {
     },
   ];
 
+  const handleSubscribe = (tierName: string) => {
+    setSelectedTier(tierName);
+    setShowModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -78,7 +87,6 @@ const Pricing = () => {
               key={tier.name}
               className={`relative bg-gradient-to-b ${tier.color} border ${tier.border} rounded-2xl p-8 flex flex-col`}
             >
-              {/* Popular Badge */}
               {tier.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                   <span className="bg-blue-600 text-white text-xs font-bold px-4 py-1 rounded-full">
@@ -87,7 +95,6 @@ const Pricing = () => {
                 </div>
               )}
 
-              {/* Tier Header */}
               <div className="text-center mb-8">
                 <div className="text-5xl mb-3">{tier.emoji}</div>
                 <span className={`text-xs font-bold px-3 py-1 rounded-full ${tier.badge}`}>
@@ -99,7 +106,6 @@ const Pricing = () => {
                 </div>
               </div>
 
-              {/* Features */}
               <ul className="space-y-3 mb-8 flex-1">
                 {tier.features.map((feature, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm">
@@ -109,12 +115,11 @@ const Pricing = () => {
                 ))}
               </ul>
 
-              {/* CTA Button */}
               <Button
                 className={`w-full font-bold py-6 text-base ${tier.button}`}
-                onClick={() => window.open("https://t.me/aetherbot_support", "_blank")}
+                onClick={() => handleSubscribe(tier.name)}
               >
-                Contact Support to Subscribe
+                Subscribe to {tier.name} Tier
               </Button>
             </div>
           ))}
@@ -122,9 +127,42 @@ const Pricing = () => {
 
         {/* Bottom Note */}
         <div className="text-center text-sm text-muted-foreground max-w-xl mx-auto">
-          <p>All plans are billed monthly. Contact our support team via Telegram or live chat to activate your subscription.</p>
+          <p>All plans are billed monthly. Contact our support team to activate your subscription.</p>
         </div>
       </main>
+
+      {/* Subscribe Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+          <div className="bg-card border border-border rounded-2xl p-10 max-w-md w-full mx-4 text-center shadow-2xl">
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="text-5xl mb-4">
+              {selectedTier === "Gold" ? "🥇" : selectedTier === "Diamond" ? "💎" : "👑"}
+            </div>
+            <h2 className="text-2xl font-bold mb-3">{selectedTier} Tier Subscription</h2>
+            <p className="text-muted-foreground mb-6">
+              To subscribe to the <strong>{selectedTier} Tier</strong>, please contact our support team. We will activate your subscription and get you started right away.
+            </p>
+            <div className="bg-muted/50 border border-border rounded-lg p-4 mb-6">
+              <p className="text-sm text-muted-foreground">
+                📧 Contact support to complete your subscription and unlock full access to Aetherbot.
+              </p>
+            </div>
+            <Button
+              className="w-full font-bold py-6 bg-yellow-500 hover:bg-yellow-600 text-black"
+              onClick={() => setShowModal(false)}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );
