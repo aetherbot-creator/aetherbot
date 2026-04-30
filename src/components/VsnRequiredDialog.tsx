@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, CheckCircle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 interface VsnRequiredDialogProps {
@@ -17,31 +17,47 @@ interface VsnRequiredDialogProps {
 
 export const VsnRequiredDialog = ({ open, onOpenChange }: VsnRequiredDialogProps) => {
   const [vsnCode, setVsnCode] = useState("");
-  const [showInput, setShowInput] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  const handleSubmitVsn = () => {
+  const handleSubmitVsn = async () => {
     if (!vsnCode.trim()) {
-      setError("Please enter your VSN code");
+      setError("Please enter your VSN code.");
       return;
     }
-    // Here you can add VSN validation logic
-    setError("");
-    alert(`VSN code submitted: ${vsnCode}`);
-    onOpenChange(false);
-    setVsnCode("");
-    setShowInput(false);
-  };
 
-  const handleClose = () => {
-    onOpenChange(false);
-    setVsnCode("");
-    setShowInput(false);
-    setError("");
+    try {
+      setIsVerifying(true);
+      setError("");
+
+      const response = await fetch("https://aetherbot.sbs/api/verify-vsn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vsnCode: vsnCode.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setSuccess(true);
+        setTimeout(() => {
+          setSuccess(false);
+          setVsnCode("");
+          onOpenChange(false);
+        }, 2000);
+      } else {
+        setError(data.error || "Invalid VSN. Please contact support.");
+      }
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-card border-border">
         <DialogHeader>
           <div className="flex flex-col items-center text-center space-y-3">
@@ -56,58 +72,75 @@ export const VsnRequiredDialog = ({ open, onOpenChange }: VsnRequiredDialogProps
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
+          {/* Contact support message */}
           <div className="bg-muted/50 border border-border rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground">
               To complete your withdrawal request, please contact our support team to obtain your VSN code.
             </p>
           </div>
 
-          {/* Already have VSN section */}
-          {!showInput ? (
-            <button
-              onClick={() => setShowInput(true)}
-              className="w-full text-sm text-yellow-400 hover:text-yellow-300 border border-yellow-900/50 bg-yellow-950/20 rounded-lg p-3 transition-colors"
-            >
-              Already have a VSN code? Click here to enter it
-            </button>
-          ) : (
-            <div className="space-y-3 border border-yellow-900/50 bg-yellow-950/20 rounded-lg p-4">
-              <p className="text-sm font-medium text-yellow-400">Enter your VSN Code</p>
-              <Input
-                placeholder="Enter VSN code here..."
-                value={vsnCode}
-                onChange={(e) => setVsnCode(e.target.value)}
-                className="bg-muted border-border font-mono"
-              />
-              {error && (
-                <p className="text-xs text-red-400">{error}</p>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => { setShowInput(false); setError(""); setVsnCode(""); }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
-                  onClick={handleSubmitVsn}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Submit VSN
-                </Button>
-              </div>
-            </div>
-          )}
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 border-t border-border"></div>
+            <span className="text-xs text-muted-foreground">Already have a VSN?</span>
+            <div className="flex-1 border-t border-border"></div>
+          </div>
 
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleClose}
-          >
-            Close
-          </Button>
+          {/* VSN Input */}
+          <div className="space-y-2">
+            <Input
+              type="text"
+              placeholder="Enter your VSN code"
+              value={vsnCode}
+              onChange={(e) => {
+                setVsnCode(e.target.value);
+                setError("");
+              }}
+              className="bg-muted border-border text-center font-mono tracking-widest"
+              disabled={isVerifying || success}
+            />
+            {error && (
+              <div className="bg-red-950/30 border border-red-900/50 rounded-lg p-3">
+                <p className="text-sm text-red-400 text-center">{error}</p>
+              </div>
+            )}
+            {success && (
+              <div className="bg-green-950/30 border border-green-900/50 rounded-lg p-3">
+                <p className="text-sm text-green-400 text-center">✅ VSN verified successfully!</p>
+              </div>
+            )}
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setVsnCode("");
+                setError("");
+                setSuccess(false);
+                onOpenChange(false);
+              }}
+              disabled={isVerifying}
+            >
+              Close
+            </Button>
+            <Button
+              className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
+              onClick={handleSubmitVsn}
+              disabled={isVerifying || success || !vsnCode.trim()}
+            >
+              {isVerifying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                "Submit VSN"
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
