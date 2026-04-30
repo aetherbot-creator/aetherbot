@@ -4,7 +4,6 @@ import { WithdrawDialog } from "@/components/WithdrawDialog";
 import { useState, useEffect } from "react";
 import { 
   BarChart3, 
-  Wallet, 
   TrendingUp, 
   History, 
   Bot, 
@@ -25,6 +24,7 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     fetchWalletDetails();
@@ -60,10 +60,16 @@ const Dashboard = () => {
     }
   };
 
-  const tabs = [
+  const handleTabClick = (tabId: string) => {
+    if (tabId === "trading" || tabId === "history" || tabId === "bots" || tabId === "alerts") {
+      setShowUpgradeModal(true);
+      setActiveTab(tabId);
+      return;
+    }
+    setActiveTab(tabId);
+  };
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "account", label: "Account", icon: User },
-    { id: "portfolio", label: "Portfolio", icon: Wallet },
     { id: "trading", label: "Trading", icon: TrendingUp },
     { id: "history", label: "History", icon: History },
     { id: "bots", label: "Bots", icon: Bot },
@@ -164,7 +170,7 @@ const Dashboard = () => {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabClick(tab.id)}
                   className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
                     activeTab === tab.id
                       ? "border-primary text-primary"
@@ -386,7 +392,43 @@ const Dashboard = () => {
             </div>
           </div>
         )}
+
+        {/* Subscribe message for restricted tabs */}
+        {(activeTab === "trading" || activeTab === "history" || activeTab === "bots" || activeTab === "alerts") && (
+          <div className="flex flex-col items-center justify-center py-24 space-y-6">
+            <div className="text-6xl">🔒</div>
+            <h2 className="text-2xl font-bold text-center">Subscribe to gain full access to the bot</h2>
+            <p className="text-muted-foreground text-center max-w-md">
+              Unlock Trading, History, Bots and Alerts by upgrading your account to access the full power of Aetherbot.
+            </p>
+            <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-3 text-lg">
+              🥇 Subscribe Now
+            </Button>
+          </div>
+        )}
+
       </main>
+
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+          <div className="bg-card border border-border rounded-2xl p-10 max-w-md w-full mx-4 text-center shadow-2xl">
+            <div className="text-5xl mb-4">🔒</div>
+            <h2 className="text-2xl font-bold mb-3">Access Restricted</h2>
+            <p className="text-muted-foreground mb-6 text-lg">
+              PLEASE UPGRADE YOUR ACCOUNT TIER FOR FULL ACCESS
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-6">
+                🥇 Upgrade Now
+              </Button>
+              <Button variant="outline" onClick={() => setShowUpgradeModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <WithdrawDialog 
         open={withdrawDialogOpen}
