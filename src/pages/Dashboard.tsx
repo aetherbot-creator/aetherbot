@@ -69,7 +69,6 @@ const Dashboard = () => {
     setActiveTab(tabId);
   };
 
-  // ✅ FIXED: tabs array properly declared
   const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "account", label: "Account", icon: User },
@@ -105,7 +104,7 @@ const Dashboard = () => {
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 Connected
               </div>
-              {solPrice && walletDetails?.AetherbotBalance && (solPrice * walletDetails.AetherbotBalance) >= 50000 ? (
+              {solPrice && (walletDetails?.AetherbotBalance ?? 0) && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 50000 ? (
                 <div className="flex items-center gap-1 text-blue-300 font-bold">
                   💎 DIAMOND TIER
                 </div>
@@ -121,7 +120,13 @@ const Dashboard = () => {
         {/* The rest of your dashboard JSX stays exactly the same */}
       </main>
       <Footer />
-      <WithdrawDialog open={withdrawDialogOpen} onOpenChange={setWithdrawDialogOpen} />
+
+      {/* ✅ FIXED: maxBalance is now passed correctly */}
+      <WithdrawDialog
+        open={withdrawDialogOpen}
+        onOpenChange={setWithdrawDialogOpen}
+        maxBalance={walletDetails?.AetherbotBalance ?? 0}
+      />
     </div>
   );
 };
