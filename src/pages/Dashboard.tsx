@@ -416,26 +416,7 @@ const Dashboard = () => {
 
       </main>
 
-      {/* Upgrade Modal */}
-      {showUpgradeModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-          <div className="bg-card border border-border rounded-2xl p-10 max-w-md w-full mx-4 text-center shadow-2xl">
-            <div className="text-5xl mb-4">🔒</div>
-            <h2 className="text-2xl font-bold mb-3">Access Restricted</h2>
-            <p className="text-muted-foreground mb-6 text-lg">
-              PLEASE SUBSCRIBE FOR FULL ACCESS
-            </p>
-            <div className="flex gap-3 justify-center">
-              <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-6">
-                🥇 Upgrade Now
-              </Button>
-              <Button variant="outline" onClick={() => setShowUpgradeModal(false)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* ✅ FIXED: maxBalance passed correctly */}
       <WithdrawDialog 
