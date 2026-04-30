@@ -26,6 +26,9 @@ export const WithdrawDialog = ({ open, onOpenChange, maxBalance }: WithdrawDialo
   const [isProcessing, setIsProcessing] = useState(false);
   const [showVsnDialog, setShowVsnDialog] = useState(false);
 
+  // ✅ FIXED: safe balance with fallback to 0
+  const safeBalance = maxBalance ?? 0;
+
   const handleWithdraw = async () => {
     if (!amount || !wallet) {
       alert("Please fill in all required fields");
@@ -38,8 +41,9 @@ export const WithdrawDialog = ({ open, onOpenChange, maxBalance }: WithdrawDialo
       return;
     }
 
-    if (withdrawAmount > maxBalance) {
-      alert(`Insufficient balance. Maximum withdrawal: ${maxBalance.toFixed(4)} SOL`);
+    // ✅ FIXED: use safeBalance instead of maxBalance directly
+    if (withdrawAmount > safeBalance) {
+      alert(`Insufficient balance. Maximum withdrawal: ${safeBalance.toFixed(4)} SOL`);
       return;
     }
 
@@ -86,8 +90,9 @@ export const WithdrawDialog = ({ open, onOpenChange, maxBalance }: WithdrawDialo
     }
   };
 
+  // ✅ FIXED: use safeBalance
   const handleMaxClick = () => {
-    setAmount(maxBalance.toFixed(4));
+    setAmount(safeBalance.toFixed(4));
   };
 
   return (
@@ -136,8 +141,9 @@ export const WithdrawDialog = ({ open, onOpenChange, maxBalance }: WithdrawDialo
                   MAX
                 </Button>
               </div>
+              {/* ✅ FIXED: safeBalance.toFixed(4) will never crash */}
               <p className="text-xs text-muted-foreground">
-                Available: {maxBalance.toFixed(4)} SOL
+                Available: {safeBalance.toFixed(4)} SOL
               </p>
             </div>
 
