@@ -408,7 +408,7 @@ const Dashboard = () => {
             <p className="text-muted-foreground text-center max-w-md">
               Unlock Trading, History, Bots and Alerts by upgrading your account to access the full power of Aetherbot.
             </p>
-            <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-3 text-lg">
+            <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-3 text-lg" onClick={() => window.location.href = "/pricing"}>
               Subscribe Now
             </Button>
           </div>
