@@ -68,7 +68,7 @@ const Dashboard = () => {
     if (!token) return;
     try {
       setIsTogglingBot(true);
-      await fetch('https://aetherbot.sbs/api/toggle-bot', {
+      await fetch('/.netlify/functions/toggle-bot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ botStatus: newStatus ? 'running' : 'paused' })
