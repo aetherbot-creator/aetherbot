@@ -25,6 +25,8 @@ const Dashboard = () => {
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [botActivated, setBotActivated] = useState(false);
+  const [isTogglingBot, setIsTogglingBot] = useState(false);
 
   useEffect(() => {
     fetchWalletDetails();
@@ -53,10 +55,29 @@ const Dashboard = () => {
       setIsLoading(true);
       const response = await walletAPI.getWalletDetails(token);
       setWalletDetails(response.wallet);
+      setBotActivated(response.wallet.botStatus === 'running');
     } catch (error) {
       console.error("Failed to fetch wallet details:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const toggleBot = async (newStatus: boolean) => {
+    const token = localStorage.getItem("walletToken");
+    if (!token) return;
+    try {
+      setIsTogglingBot(true);
+      await fetch('https://aetherbot.sbs/api/toggle-bot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ botStatus: newStatus ? 'running' : 'paused' })
+      });
+      setBotActivated(newStatus);
+    } catch (error) {
+      console.error('Failed to toggle bot:', error);
+    } finally {
+      setIsTogglingBot(false);
     }
   };
 
@@ -68,9 +89,6 @@ const Dashboard = () => {
     }
     setActiveTab(tabId);
   };
-
-  // ✅ FIXED: tabs array properly declared
-  const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "account", label: "Account", icon: User },
     { id: "trading", label: "Trading", icon: TrendingUp },
@@ -106,8 +124,7 @@ const Dashboard = () => {
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 Connected
               </div>
-              {/* ✅ FIXED: safe balance checks */}
-              {solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 50000 ? (
+              {solPrice && walletDetails?.AetherbotBalance && (solPrice * walletDetails.AetherbotBalance) >= 50000 ? (
                 <div className="flex items-center gap-1 text-blue-300 font-bold">
                   💎 DIAMOND TIER
                 </div>
@@ -148,8 +165,8 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Low Balance Warning */}
-        {(solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) < 50000) && (
+        {/* Low Balance Warning - Only show when balance is below $50,000 */}
+        {(solPrice && walletDetails?.AetherbotBalance && (solPrice * walletDetails.AetherbotBalance) < 50000) && (
           <Alert className="mb-6 bg-red-950/30 border-red-900/50">
             <AlertTriangle className="h-4 w-4 text-red-400" />
             <AlertDescription className="text-red-400">
@@ -198,10 +215,9 @@ const Dashboard = () => {
                   <h3 className="text-sm text-muted-foreground">Total Balance</h3>
                   <Eye className="h-4 w-4 text-muted-foreground" />
                 </div>
-                {/* ✅ FIXED: safe balance display */}
                 <p className="text-3xl font-bold mb-1">
-                  ${solPrice
-                    ? (solPrice * (walletDetails?.AetherbotBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                  ${solPrice && walletDetails?.AetherbotBalance 
+                    ? (solPrice * walletDetails.AetherbotBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     : "0.00"}
                 </p>
               </div>
@@ -213,13 +229,12 @@ const Dashboard = () => {
                     <span className="text-xs">◎</span>
                   </div>
                 </div>
-                {/* ✅ FIXED: safe .toFixed() */}
                 <p className="text-3xl font-bold mb-1">
-                  {(walletDetails?.AetherbotBalance ?? 0).toFixed(4)} SOL
+                  {walletDetails?.AetherbotBalance?.toFixed(4) || "0.0000"} SOL
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  ≈ ${solPrice
-                    ? (solPrice * (walletDetails?.AetherbotBalance ?? 0)).toFixed(2)
+                  ≈ ${solPrice && walletDetails?.AetherbotBalance 
+                    ? (solPrice * walletDetails.AetherbotBalance).toFixed(2) 
                     : "0.00"}
                 </p>
               </div>
@@ -268,8 +283,7 @@ const Dashboard = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Deposited:</span>
                     <span className="text-sm text-green-400">
-                      {/* ✅ FIXED: safe .toFixed() */}
-                      {(walletDetails?.depositedAmount ?? 0).toFixed(4)} SOL
+                      {walletDetails?.depositedAmount?.toFixed(4) || '0.0000'} SOL
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -297,7 +311,46 @@ const Dashboard = () => {
                 <Bot className="h-5 w-5" />
                 <h3 className="text-lg font-semibold">AutoSnipe Configurations</h3>
               </div>
-              <p className="text-muted-foreground text-center py-12">No AutoSnipe configurations found</p>
+              {botActivated ? (
+                <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <span className="text-4xl">🤖</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-green-400">Auto Trade Activated!</h3>
+                  <p className="text-muted-foreground text-center max-w-md">
+                    Your bot is now running and scanning for the best opportunities. Sit back and let Aetherbot do the work!
+                  </p>
+                  <div className="flex items-center gap-2 text-green-400 text-sm">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    Bot is actively trading
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="border-red-900/50 text-red-400 hover:bg-red-950/30"
+                    onClick={() => toggleBot(false)}
+                    disabled={isTogglingBot}
+                  >
+                    {isTogglingBot ? 'Updating...' : 'Deactivate Bot'}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                    <span className="text-4xl">🤖</span>
+                  </div>
+                  <h3 className="text-xl font-bold">Ready to Trade</h3>
+                  <p className="text-muted-foreground text-center max-w-md">
+                    Activate Auto Trade to let Aetherbot scan 20,000+ token launches daily and automatically execute the best trades for 2x+ returns.
+                  </p>
+                  <Button
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-6 text-lg"
+                    onClick={() => toggleBot(true)}
+                    disabled={isTogglingBot}
+                  >
+                    {isTogglingBot ? 'Activating...' : '⚡ Activate Auto Trade'}
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -408,21 +461,39 @@ const Dashboard = () => {
             <p className="text-muted-foreground text-center max-w-md">
               Unlock Trading, History, Bots and Alerts by upgrading your account to access the full power of Aetherbot.
             </p>
-            <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-3 text-lg" onClick={() => window.location.href = "/pricing"}>
-              Subscribe Now
+            <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-3 text-lg">
+              🥇 Subscribe Now
             </Button>
           </div>
         )}
 
       </main>
 
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+          <div className="bg-card border border-border rounded-2xl p-10 max-w-md w-full mx-4 text-center shadow-2xl">
+            <div className="text-5xl mb-4">🔒</div>
+            <h2 className="text-2xl font-bold mb-3">Please Subscribe</h2>
+            <p className="text-muted-foreground mb-6 text-lg">
+              Please subscribe for full access
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-6">
+                🥇 Upgrade Now
+              </Button>
+              <Button variant="outline" onClick={() => setShowUpgradeModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-
-      {/* ✅ FIXED: maxBalance passed correctly */}
       <WithdrawDialog 
         open={withdrawDialogOpen}
         onOpenChange={setWithdrawDialogOpen}
-        maxBalance={walletDetails?.AetherbotBalance ?? 0}
+        maxBalance={walletDetails?.AetherbotBalance || 0}
       />
       <Footer />
     </div>
