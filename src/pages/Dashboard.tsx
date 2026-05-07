@@ -89,6 +89,8 @@ const Dashboard = () => {
     }
     setActiveTab(tabId);
   };
+
+  const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "account", label: "Account", icon: User },
     { id: "trading", label: "Trading", icon: TrendingUp },
