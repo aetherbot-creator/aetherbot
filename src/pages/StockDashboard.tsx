@@ -1,4 +1,4 @@
-cat > /mnt/user-data/outputs/StockDashboard.tsx << 'EOF'
+
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -648,4 +648,4 @@ const StockDashboard = () => {
 };
 
 export default StockDashboard;
-EOF
+
