@@ -6,11 +6,11 @@ import {
   ArrowLeft, 
   Activity, 
   Wallet, 
-  Layers, 
-  ChevronRight, 
   Briefcase,
   ArrowDownUp,
-  Coins
+  Coins,
+  Search,
+  CheckCircle2
 } from "lucide-react";
 import { walletAPI } from "@/lib/api";
 
@@ -20,6 +20,12 @@ interface Position {
   avgPrice: number;
 }
 
+interface SearchMatch {
+  symbol: string;
+  name: string;
+  type: string;
+}
+
 const StockDashboard = () => {
   const [ticker, setTicker] = useState("AAPL");
   const [price, setPrice] = useState<number | null>(null);
@@ -27,16 +33,22 @@ const StockDashboard = () => {
   const [isFetching, setIsFetching] = useState(false);
   const [orderType, setOrderType] = useState<"BUY" | "SELL">("BUY");
 
-  // --- New On-Ramp Conversion State ---
+  // --- Multi-Token Search State Management ---
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchMatch[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+
+  // --- On-Ramp Conversion State ---
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [cryptoBalance, setCryptoBalance] = useState<number>(0);
   const [convertAmount, setConvertAmount] = useState<string>("");
   const [showSwapPane, setShowSwapPane] = useState<boolean>(false);
 
-  // --- Persistent LocalStorage State Units ---
+  // --- Persistent Storage State Engines ---
   const [virtualCash, setVirtualCash] = useState<number>(() => {
     const saved = localStorage.getItem("aether_stock_cash");
-    return saved ? parseFloat(saved) : 0; // Starts at $0 until they convert!
+    return saved ? parseFloat(saved) : 0;
   });
 
   const [positions, setPositions] = useState<Position[]>(() => {
@@ -44,7 +56,6 @@ const StockDashboard = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Sync state modifications to local registry updates
   useEffect(() => {
     localStorage.setItem("aether_stock_cash", virtualCash.toString());
   }, [virtualCash]);
@@ -53,27 +64,58 @@ const StockDashboard = () => {
     localStorage.setItem("aether_stock_positions", JSON.stringify(positions));
   }, [positions]);
 
-  // Fetch live market data hooks
+  // Alpha Vantage Dynamic Security Search Engine Execution
+  const handleTickerLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    try {
+      setIsSearching(true);
+      const secretApiKey = import.meta.env.VITE_STOCK_DATA_KEY || "demo";
+      const searchRes = await fetch(
+        `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${searchQuery}&apikey=${secretApiKey}`
+      );
+      const searchData = await searchRes.json();
+      
+      if (searchData && searchData["bestMatches"]) {
+        const matches = searchData["bestMatches"].map((item: any) => ({
+          symbol: item["1. symbol"],
+          name: item["2. name"],
+          type: item["3. type"],
+        }));
+        setSearchResults(matches);
+      }
+    } catch (err) {
+      console.error("Token matching operational lookup failure:", err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Main Live Market Execution Sync Framework
   const fetchMarketData = async () => {
     if (!ticker) return;
     try {
       setIsFetching(true);
-      // 1. Fetch Stock Price
-      const apiKey = import.meta.env.VITE_ALPHA_VANTAGE_KEY || "YOUR_ALPHA_VANTAGE_KEY"; 
+      const secretApiKey = import.meta.env.VITE_STOCK_DATA_KEY || "demo";
+
       const stockRes = await fetch(
-        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${apiKey}`
+        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${secretApiKey}`
       );
       const stockData = await stockRes.json();
+      
       if (stockData["Global Quote"] && stockData["Global Quote"]["05. price"]) {
-        setPrice(parseFloat(stockData["Global Quote"]["05. price"]));
+        const latestPrice = parseFloat(stockData["Global Quote"]["05. price"]);
+        setPrice(latestPrice);
+        setLivePrices(prev => ({ ...prev, [ticker]: latestPrice }));
       }
 
-      // 2. Fetch Live SOL conversion metric
       const cryptoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
       const cryptoData = await cryptoRes.json();
-      setSolPrice(cryptoData.solana.usd);
+      if (cryptoData?.solana?.usd) {
+        setSolPrice(cryptoData.solana.usd);
+      }
 
-      // 3. Fetch Real User Crypto Balances
       const token = localStorage.getItem("walletToken");
       if (token) {
         const profile = await walletAPI.getWalletDetails(token);
@@ -91,23 +133,6 @@ const StockDashboard = () => {
     const interval = setInterval(fetchMarketData, 30000);
     return () => clearInterval(interval);
   }, [ticker]);
-
-  // Handle Conversion Action
-  const executeLiquidityConversion = () => {
-    const solToConvert = parseFloat(convertAmount);
-    if (isNaN(solToConvert) || solToConvert <= 0) return alert("Enter a valid amount.");
-    if (solToConvert > cryptoBalance) return alert("Insufficient available SOL balance to convert.");
-    if (!solPrice) return alert("Price indexing offline. Try again shortly.");
-
-    const creditUsdAmount = solToConvert * solPrice;
-
-    // Deduct locally and add to standalone USD balance
-    setCryptoBalance(prev => prev - solToConvert);
-    setVirtualCash(prev => prev + creditUsdAmount);
-    setConvertAmount("");
-    setShowSwapPane(false);
-    alert(`Successfully converted ${solToConvert} SOL into $${creditUsdAmount.toFixed(2)} USD!`);
-  };
 
   const executeOrder = () => {
     if (!price) return;
@@ -144,7 +169,7 @@ const StockDashboard = () => {
   };
 
   const totalPortfolioValue = positions.reduce((sum, pos) => {
-    const currentPrice = ticker === pos.ticker && price ? price : pos.avgPrice;
+    const currentPrice = livePrices[pos.ticker] || pos.avgPrice;
     return sum + (pos.quantity * currentPrice);
   }, 0);
 
@@ -160,7 +185,7 @@ const StockDashboard = () => {
           <div>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <h1 className="font-mono text-lg font-bold tracking-wider text-slate-100">STOCK ROUTING TERMINAL</h1>
+              <h1 className="font-mono text-lg font-bold tracking-wider text-slate-100">GLOBAL QUANT ROUTING DESK</h1>
             </div>
           </div>
         </div>
@@ -177,7 +202,7 @@ const StockDashboard = () => {
         </div>
       </header>
 
-      {/* Main Container Core layout */}
+      {/* Main Container Layout */}
       <main className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 max-w-[1600px] mx-auto w-full relative">
         
         {/* SWAP POPUP COMPONENT MODULE */}
@@ -211,34 +236,68 @@ const StockDashboard = () => {
                 </div>
               )}
 
-              <Button onClick={executeLiquidityConversion} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs uppercase h-10 tracking-wide">
+              <Button onClick={() => {
+                const solToConvert = parseFloat(convertAmount);
+                if (isNaN(solToConvert) || solToConvert <= 0 || solToConvert > cryptoBalance || !solPrice) return alert("Validation Check Failed.");
+                setCryptoBalance(prev => prev - solToConvert);
+                setVirtualCash(prev => prev + (solToConvert * solPrice));
+                setConvertAmount("");
+                setShowSwapPane(false);
+              }} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs uppercase h-10 tracking-wide">
                 Confirm USD Bridge Transfer
               </Button>
             </div>
           </div>
         )}
 
-        {/* Left Side Monitors Section */}
+        {/* Left Side Monitors Section (Replaced with Live Universal Asset Search) */}
         <section className="lg:col-span-1 space-y-4">
           <div className="bg-[#0d1527] border border-[#1e293b] rounded-xl p-4">
             <h3 className="text-xs font-mono font-bold uppercase text-slate-400 tracking-wider mb-3 flex items-center gap-2">
-              <Layers className="h-3.5 w-3.5 text-primary" /> Core Monitors
+              <Search className="h-3.5 w-3.5 text-primary" /> Token & Stock Indexer
             </h3>
-            <div className="grid grid-cols-1 gap-2">
-              {["AAPL", "TSLA", "NVDA", "MSFT", "AMZN"].map((sym) => (
-                <button
-                  key={sym}
-                  onClick={() => setTicker(sym)}
-                  className={`w-full text-left p-3 rounded-lg border font-mono flex items-center justify-between transition-all ${
-                    ticker === sym 
-                      ? "bg-primary/10 border-primary text-primary" 
-                      : "bg-[#111a2e]/60 border-[#1e293b] text-slate-300"
-                  }`}
-                >
-                  <span className="font-bold text-sm">{sym}</span>
-                  <ChevronRight className="h-4 w-4 opacity-40" />
-                </button>
-              ))}
+            
+            <form onSubmit={handleTickerLookup} className="flex gap-2 mb-4">
+              <input 
+                type="text" 
+                placeholder="Search symbol (e.g. TSLA, IBM)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-[#111a2e] border border-[#1e293b] rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none font-mono"
+              />
+              <Button type="submit" size="sm" className="bg-primary hover:bg-primary/90 px-3">
+                {isSearching ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+              </Button>
+            </form>
+
+            <div className="space-y-1 max-h-72 overflow-y-auto pr-1 dynamic-scrollbar">
+              {searchResults.length === 0 ? (
+                <div className="text-center py-6 text-[11px] text-slate-500 font-mono border border-dashed border-[#1e293b] rounded-lg">
+                  Submit keywords above to scan indexes.
+                </div>
+              ) : (
+                searchResults.map((match) => (
+                  <button
+                    key={match.symbol}
+                    onClick={() => {
+                      setTicker(match.symbol);
+                      setSearchResults([]);
+                      setSearchQuery("");
+                    }}
+                    className={`w-full text-left p-2.5 rounded-lg border text-xs font-mono transition-all flex justify-between items-center ${
+                      ticker === match.symbol 
+                        ? "bg-primary/10 border-primary text-primary" 
+                        : "bg-[#111a2e]/40 border-[#1e293b] hover:bg-[#111a2e] text-slate-300"
+                    }`}
+                  >
+                    <div className="flex flex-col truncate max-w-[80%]">
+                      <span className="font-bold text-slate-200">{match.symbol}</span>
+                      <span className="text-[10px] text-slate-500 truncate">{match.name}</span>
+                    </div>
+                    {ticker === match.symbol && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />}
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
@@ -259,18 +318,18 @@ const StockDashboard = () => {
         <section className="lg:col-span-2 space-y-6">
           <div className="bg-[#0d1527] border border-[#1e293b] rounded-xl p-5 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-[#1e293b] pb-3">
-              <span className="font-mono bg-[#1a263d] px-2.5 py-1 rounded text-primary font-bold text-sm">{ticker}</span>
+              <span className="font-mono bg-[#1a263d] px-2.5 py-1 rounded text-primary font-bold text-sm tracking-wider">{ticker}</span>
               <div className="flex items-center gap-2 text-xs font-mono text-slate-400 bg-[#111a2e] px-3 py-1.5 rounded-lg">
                 <Activity className="h-3.5 w-3.5 text-primary animate-pulse" />
-                <span>FEED STATUS: ACTIVE</span>
+                <span>INDEX ROUTER: ONLINE</span>
               </div>
             </div>
 
             <div className="h-72 bg-[#070b14] border border-[#1e293b] rounded-xl flex flex-col items-center justify-center p-6 text-center">
               <TrendingUp className="h-6 w-6 text-primary mb-2" />
-              <h4 className="text-sm font-semibold text-slate-200">Interactive Canvas Template</h4>
-              <p className="text-xs text-slate-500 max-w-sm mt-1">
-                Alpha Vantage tracking live asset <span className="text-primary font-semibold">{ticker}</span>.
+              <h4 className="text-sm font-semibold text-slate-200">Interactive Technical Monitor</h4>
+              <p className="text-xs text-slate-500 max-w-sm mt-1 font-mono">
+                Currently tracking execution values for asset element <span className="text-primary font-semibold">{ticker}</span>.
               </p>
             </div>
           </div>
@@ -278,34 +337,45 @@ const StockDashboard = () => {
           {/* Holdings Inventory Ledger */}
           <div className="bg-[#0d1527] border border-[#1e293b] rounded-xl p-5 shadow-xl">
             <h3 className="text-xs font-mono font-bold uppercase text-slate-400 tracking-wider mb-4 flex items-center gap-2">
-              <Briefcase className="h-3.5 w-3.5 text-amber-400" /> Standalone Portfolio Holdings
+              <Briefcase className="h-3.5 w-3.5 text-amber-400" /> Live Standalone Asset Portfolio (${totalPortfolioValue.toFixed(2)})
             </h3>
             {positions.length === 0 ? (
               <div className="text-center py-8 border border-[#1e293b] border-dashed rounded-xl bg-[#111a2e]/30 text-xs text-slate-500 font-mono">
-                NO SHARES LOGGED. SECURE STANDALONE USD BALANCE TO ACQUIRE EQUITIES.
+                NO ASSET BALANCE LOGGED. BRIDGE SOL TO INITIATE EQUITY TRADES.
               </div>
             ) : (
               <div className="border border-[#1e293b] rounded-xl overflow-hidden bg-[#0b1120]">
                 <table className="w-full text-left font-mono text-xs">
                   <thead className="bg-[#111a2e] text-slate-400 border-b border-[#1e293b]">
                     <tr>
-                      <th className="p-3">Asset</th>
+                      <th className="p-3">Asset Matrix</th>
                       <th className="p-3">Shares</th>
-                      <th className="p-3">Avg Buy</th>
-                      <th className="p-3 text-right">Value</th>
+                      <th className="p-3">Cost Basis</th>
+                      <th className="p-3 text-right">Market Value</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1e293b]">
-                    {positions.map((pos) => (
-                      <tr key={pos.ticker}>
-                        <td className="p-3 font-bold text-slate-100">{pos.ticker}</td>
-                        <td className="p-3 text-slate-400">{pos.quantity}</td>
-                        <td className="p-3 text-slate-400">${pos.avgPrice.toFixed(2)}</td>
-                        <td className="p-3 font-semibold text-right text-slate-200">
-                          ${(pos.quantity * (ticker === pos.ticker && price ? price : pos.avgPrice)).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
+                    {positions.map((pos) => {
+                      const currentPrice = livePrices[pos.ticker] || pos.avgPrice;
+                      const assetValue = pos.quantity * currentPrice;
+                      const returnProfit = assetValue - (pos.quantity * pos.avgPrice);
+                      return (
+                        <tr key={pos.ticker} className="hover:bg-[#111a2e]/30 transition-all">
+                          <td className="p-3 font-bold text-slate-100 flex flex-col">
+                            <span>{pos.ticker}</span>
+                            <span className="text-[10px] text-slate-500 font-normal">Mkt: ${currentPrice.toFixed(2)}</span>
+                          </td>
+                          <td className="p-3 text-slate-400 align-middle">{pos.quantity}</td>
+                          <td className="p-3 text-slate-400 align-middle">${pos.avgPrice.toFixed(2)}</td>
+                          <td className="p-3 text-right align-middle">
+                            <span className="font-semibold text-slate-200 block">${assetValue.toFixed(2)}</span>
+                            <span className={`text-[10px] block font-bold ${returnProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                              {returnProfit >= 0 ? "+" : ""}{returnProfit.toFixed(2)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -318,7 +388,7 @@ const StockDashboard = () => {
           <div className="bg-[#0d1527] border border-[#1e293b] rounded-xl p-5 shadow-xl flex flex-col justify-between">
             <div className="space-y-5">
               <div>
-                <h3 className="text-sm font-mono font-bold uppercase text-slate-200 tracking-wider">Routing Desk</h3>
+                <h3 className="text-sm font-mono font-bold uppercase text-slate-200 tracking-wider">Trading Desk</h3>
               </div>
 
               <div className="grid grid-cols-2 gap-1 p-1 bg-[#111a2e] border border-[#1e293b] rounded-lg font-mono text-xs">
@@ -339,7 +409,7 @@ const StockDashboard = () => {
               <div className="space-y-4">
                 <div className="bg-[#111a2e] border border-[#1e293b] rounded-xl p-3 flex justify-between items-center">
                   <div>
-                    <span className="text-[10px] text-slate-500 block font-mono">ASSET</span>
+                    <span className="text-[10px] text-slate-500 block font-mono">TARGET SYMBOL</span>
                     <span className="font-mono font-bold text-sm text-slate-200">{ticker}</span>
                   </div>
                   <div className="text-right">
