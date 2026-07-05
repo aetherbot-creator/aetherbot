@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import Pricing from "./pages/Pricing";
+import StockDashboard from "./pages/StockDashboard"; // 1. Imported your new page
 
 const queryClient = new QueryClient();
 
@@ -31,13 +32,17 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route 
             path="/dashboard" 
-            element={
+            element = {
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
             } 
           />
           <Route path="/pricing" element={<Pricing />} />
+          
+          {/* 2. Added the new stocks terminal route here */}
+          <Route path="/stocks" element={<StockDashboard />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
