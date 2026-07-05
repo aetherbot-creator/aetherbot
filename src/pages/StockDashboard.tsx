@@ -297,7 +297,7 @@ const StockDashboard = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold">📈 Stock Dashboard</h1>
-            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full font-medium">Demo Mode</span>
+            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full font-medium">LIVE TRADING</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
