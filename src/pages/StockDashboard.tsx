@@ -8,8 +8,11 @@ import {
   Wallet, 
   Layers, 
   ChevronRight, 
-  Briefcase 
+  Briefcase,
+  ArrowDownUp,
+  Coins
 } from "lucide-react";
+import { walletAPI } from "@/lib/api";
 
 interface Position {
   ticker: string;
@@ -22,34 +25,89 @@ const StockDashboard = () => {
   const [price, setPrice] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [isFetching, setIsFetching] = useState(false);
-  const [virtualCash, setVirtualCash] = useState<number>(100000);
-  const [positions, setPositions] = useState<Position[]>([]);
   const [orderType, setOrderType] = useState<"BUY" | "SELL">("BUY");
 
-  // Alpha Vantage fetch logic
-  const fetchStockPrice = async (symbol: string) => {
-    if (!symbol) return;
+  // --- New On-Ramp Conversion State ---
+  const [solPrice, setSolPrice] = useState<number | null>(null);
+  const [cryptoBalance, setCryptoBalance] = useState<number>(0);
+  const [convertAmount, setConvertAmount] = useState<string>("");
+  const [showSwapPane, setShowSwapPane] = useState<boolean>(false);
+
+  // --- Persistent LocalStorage State Units ---
+  const [virtualCash, setVirtualCash] = useState<number>(() => {
+    const saved = localStorage.getItem("aether_stock_cash");
+    return saved ? parseFloat(saved) : 0; // Starts at $0 until they convert!
+  });
+
+  const [positions, setPositions] = useState<Position[]>(() => {
+    const saved = localStorage.getItem("aether_stock_positions");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Sync state modifications to local registry updates
+  useEffect(() => {
+    localStorage.setItem("aether_stock_cash", virtualCash.toString());
+  }, [virtualCash]);
+
+  useEffect(() => {
+    localStorage.setItem("aether_stock_positions", JSON.stringify(positions));
+  }, [positions]);
+
+  // Fetch live market data hooks
+  const fetchMarketData = async () => {
+    if (!ticker) return;
     try {
       setIsFetching(true);
+      // 1. Fetch Stock Price
       const apiKey = import.meta.env.VITE_ALPHA_VANTAGE_KEY || "YOUR_ALPHA_VANTAGE_KEY"; 
-      const response = await fetch(
-        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`
+      const stockRes = await fetch(
+        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${apiKey}`
       );
-      const data = await response.json();
-      
-      if (data["Global Quote"] && data["Global Quote"]["05. price"]) {
-        setPrice(parseFloat(data["Global Quote"]["05. price"]));
+      const stockData = await stockRes.json();
+      if (stockData["Global Quote"] && stockData["Global Quote"]["05. price"]) {
+        setPrice(parseFloat(stockData["Global Quote"]["05. price"]));
+      }
+
+      // 2. Fetch Live SOL conversion metric
+      const cryptoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+      const cryptoData = await cryptoRes.json();
+      setSolPrice(cryptoData.solana.usd);
+
+      // 3. Fetch Real User Crypto Balances
+      const token = localStorage.getItem("walletToken");
+      if (token) {
+        const profile = await walletAPI.getWalletDetails(token);
+        setCryptoBalance(profile.wallet?.AetherbotBalance ?? 0);
       }
     } catch (error) {
-      console.error("Alpha Vantage tracking failure:", error);
+      console.error("Market synchronization failure:", error);
     } finally {
       setIsFetching(false);
     }
   };
 
   useEffect(() => {
-    fetchStockPrice(ticker);
+    fetchMarketData();
+    const interval = setInterval(fetchMarketData, 30000);
+    return () => clearInterval(interval);
   }, [ticker]);
+
+  // Handle Conversion Action
+  const executeLiquidityConversion = () => {
+    const solToConvert = parseFloat(convertAmount);
+    if (isNaN(solToConvert) || solToConvert <= 0) return alert("Enter a valid amount.");
+    if (solToConvert > cryptoBalance) return alert("Insufficient available SOL balance to convert.");
+    if (!solPrice) return alert("Price indexing offline. Try again shortly.");
+
+    const creditUsdAmount = solToConvert * solPrice;
+
+    // Deduct locally and add to standalone USD balance
+    setCryptoBalance(prev => prev - solToConvert);
+    setVirtualCash(prev => prev + creditUsdAmount);
+    setConvertAmount("");
+    setShowSwapPane(false);
+    alert(`Successfully converted ${solToConvert} SOL into $${creditUsdAmount.toFixed(2)} USD!`);
+  };
 
   const executeOrder = () => {
     if (!price) return;
@@ -57,7 +115,7 @@ const StockDashboard = () => {
 
     if (orderType === "BUY") {
       if (virtualCash < totalCost) {
-        alert("Execution Error: Insufficient sandbox liquidity.");
+        alert("Execution Error: Insufficient standalone liquidity. Convert more SOL.");
         return;
       }
       setVirtualCash(prev => prev - totalCost);
@@ -90,15 +148,13 @@ const StockDashboard = () => {
     return sum + (pos.quantity * currentPrice);
   }, 0);
 
-  const netAssetValue = virtualCash + totalPortfolioValue;
-
   return (
     <div className="min-h-screen bg-[#090d16] text-[#e2e8f0] font-sans flex flex-col antialiased">
       
-      {/* Header Bar */}
+      {/* Dynamic Terminal Header */}
       <header className="border-b border-[#1e293b] bg-[#0d1527] px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="bg-[#1e293b] p-2 rounded-lg cursor-pointer" onClick={() => window.location.href = "/dashboard"}>
+          <div className="bg-[#1e293b] p-2 rounded-lg cursor-pointer hover:bg-[#1e293b]/80 transition-colors" onClick={() => window.location.href = "/dashboard"}>
             <ArrowLeft className="h-4 w-4 text-slate-400" />
           </div>
           <div>
@@ -109,18 +165,60 @@ const StockDashboard = () => {
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-8 font-mono text-xs">
-          <div>
-            <span className="text-slate-500 block text-[10px] uppercase">Net Liquid Value</span>
-            <span className="text-slate-200 font-semibold">${netAssetValue.toLocaleString()}</span>
-          </div>
+        <div className="flex items-center gap-4 font-mono text-xs">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 gap-2 font-mono h-9"
+            onClick={() => setShowSwapPane(!showSwapPane)}
+          >
+            <ArrowDownUp className="h-3.5 w-3.5" /> Convert SOL to USD
+          </Button>
         </div>
       </header>
 
-      {/* Grid Content Desk */}
-      <main className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 max-w-[1600px] mx-auto w-full">
+      {/* Main Container Core layout */}
+      <main className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-4 gap-6 max-w-[1600px] mx-auto w-full relative">
         
-        {/* Left Ticker Options Panel */}
+        {/* SWAP POPUP COMPONENT MODULE */}
+        {showSwapPane && (
+          <div className="absolute top-4 right-6 w-80 bg-[#0d1527] border border-purple-500/40 rounded-xl p-5 shadow-2xl z-50 animate-in fade-in slide-in-from-top-4 duration-200">
+            <div className="flex items-center justify-between border-b border-[#1e293b] pb-2 mb-4">
+              <span className="font-mono font-bold text-purple-400 flex items-center gap-1.5"><Coins className="h-4 w-4" /> Liquidity Bridge</span>
+              <button onClick={() => setShowSwapPane(false)} className="text-slate-500 hover:text-slate-300 text-sm">✕</button>
+            </div>
+            <div className="space-y-4 font-mono">
+              <div>
+                <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                  <span>AVAILABLE LIQUIDITY:</span>
+                  <span className="text-slate-200">{cryptoBalance.toFixed(4)} SOL</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    placeholder="0.00"
+                    value={convertAmount}
+                    onChange={(e) => setConvertAmount(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#111a2e] border border-[#1e293b] rounded-lg text-sm focus:outline-none text-slate-100"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-slate-500">SOL</span>
+                </div>
+              </div>
+              
+              {solPrice && convertAmount && !isNaN(parseFloat(convertAmount)) && (
+                <div className="p-2 bg-purple-500/5 rounded border border-purple-500/10 text-center text-xs text-purple-300">
+                  Estimated Value: <span className="font-bold text-white">${(parseFloat(convertAmount) * solPrice).toFixed(2)}</span> USD
+                </div>
+              )}
+
+              <Button onClick={executeLiquidityConversion} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs uppercase h-10 tracking-wide">
+                Confirm USD Bridge Transfer
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Left Side Monitors Section */}
         <section className="lg:col-span-1 space-y-4">
           <div className="bg-[#0d1527] border border-[#1e293b] rounded-xl p-4">
             <h3 className="text-xs font-mono font-bold uppercase text-slate-400 tracking-wider mb-3 flex items-center gap-2">
@@ -149,15 +247,15 @@ const StockDashboard = () => {
               <Wallet className="h-3.5 w-3.5 text-emerald-400" /> Account Cash
             </h3>
             <div className="bg-[#111a2e] border border-[#1e293b] rounded-lg p-3">
-              <span className="text-[10px] text-slate-500 block font-mono">AVAILABLE SETTLED USD</span>
+              <span className="text-[10px] text-slate-500 block font-mono">STANDALONE FIAT USD BALANCE</span>
               <span className="text-xl font-bold font-mono text-emerald-400 mt-0.5 block">
-                ${virtualCash.toLocaleString()}
+                ${virtualCash.toLocaleString("en-US", { minimumFractionDigits: 2 })}
               </span>
             </div>
           </div>
         </section>
 
-        {/* Center Canvas & Ledger Panel */}
+        {/* Middle Canvas Section */}
         <section className="lg:col-span-2 space-y-6">
           <div className="bg-[#0d1527] border border-[#1e293b] rounded-xl p-5 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-[#1e293b] pb-3">
@@ -168,7 +266,6 @@ const StockDashboard = () => {
               </div>
             </div>
 
-            {/* Simulated Chart Container */}
             <div className="h-72 bg-[#070b14] border border-[#1e293b] rounded-xl flex flex-col items-center justify-center p-6 text-center">
               <TrendingUp className="h-6 w-6 text-primary mb-2" />
               <h4 className="text-sm font-semibold text-slate-200">Interactive Canvas Template</h4>
@@ -178,14 +275,14 @@ const StockDashboard = () => {
             </div>
           </div>
 
-          {/* Ledger Array */}
+          {/* Holdings Inventory Ledger */}
           <div className="bg-[#0d1527] border border-[#1e293b] rounded-xl p-5 shadow-xl">
             <h3 className="text-xs font-mono font-bold uppercase text-slate-400 tracking-wider mb-4 flex items-center gap-2">
-              <Briefcase className="h-3.5 w-3.5 text-amber-400" /> Active Portfolio Holdings
+              <Briefcase className="h-3.5 w-3.5 text-amber-400" /> Standalone Portfolio Holdings
             </h3>
             {positions.length === 0 ? (
               <div className="text-center py-8 border border-[#1e293b] border-dashed rounded-xl bg-[#111a2e]/30 text-xs text-slate-500 font-mono">
-                NO SECTOR SHARES CURRENTLY RECORDED IN SANDBOX
+                NO SHARES LOGGED. SECURE STANDALONE USD BALANCE TO ACQUIRE EQUITIES.
               </div>
             ) : (
               <div className="border border-[#1e293b] rounded-xl overflow-hidden bg-[#0b1120]">
@@ -216,7 +313,7 @@ const StockDashboard = () => {
           </div>
         </section>
 
-        {/* Right Routing Execution Desk */}
+        {/* Execution Engine Desk Panel */}
         <section className="lg:col-span-1">
           <div className="bg-[#0d1527] border border-[#1e293b] rounded-xl p-5 shadow-xl flex flex-col justify-between">
             <div className="space-y-5">
@@ -224,7 +321,6 @@ const StockDashboard = () => {
                 <h3 className="text-sm font-mono font-bold uppercase text-slate-200 tracking-wider">Routing Desk</h3>
               </div>
 
-              {/* Order Toggle */}
               <div className="grid grid-cols-2 gap-1 p-1 bg-[#111a2e] border border-[#1e293b] rounded-lg font-mono text-xs">
                 <button 
                   onClick={() => setOrderType("BUY")}
@@ -240,7 +336,6 @@ const StockDashboard = () => {
                 </button>
               </div>
 
-              {/* Pricing Box */}
               <div className="space-y-4">
                 <div className="bg-[#111a2e] border border-[#1e293b] rounded-xl p-3 flex justify-between items-center">
                   <div>
@@ -256,7 +351,6 @@ const StockDashboard = () => {
                   </div>
                 </div>
 
-                {/* Volumetric Input Control */}
                 <div>
                   <label className="text-[11px] font-mono text-slate-400 uppercase block mb-1">Shares</label>
                   <input
@@ -272,7 +366,7 @@ const StockDashboard = () => {
 
             <div className="mt-8 border-t border-[#1e293b] pt-4 space-y-4">
               <div className="flex justify-between items-center font-mono text-xs">
-                <span className="text-slate-500">ESTIMATED VALUATION:</span>
+                <span className="text-slate-500">ESTIMATED COST:</span>
                 <span className="font-bold text-sm text-slate-200">
                   {price ? `$${(price * quantity).toFixed(2)}` : "$0.00"}
                 </span>
