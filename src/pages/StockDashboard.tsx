@@ -12,7 +12,7 @@ import {
 import { walletAPI } from "@/lib/api";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const API_BASE = "https://aetherbot.sbs/api";
+const API_BASE = "/.netlify/functions";
 const DEFAULT_STOCKS = [
   { ticker: "AAPL", name: "Apple Inc.",        sector: "tech",    price: 0, change: 0, changePct: 0 },
   { ticker: "MSFT", name: "Microsoft Corp.",    sector: "tech",    price: 0, change: 0, changePct: 0 },
