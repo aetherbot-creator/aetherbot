@@ -105,15 +105,19 @@ const Dashboard = () => {
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 Connected
               </div>
-              {solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 50000 ? (
-                <div className="flex items-center gap-1 text-blue-300 font-bold">
-                  💎 DIAMOND TIER
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 text-yellow-400 font-bold">
-                  🥇 GOLD TIER
-                </div>
-              )}
+          {solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 50000 ? (
+  <div className="flex items-center gap-1 text-blue-300 font-bold">
+    💎 DIAMOND TIER
+  </div>
+) : solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 300 ? (
+  <div className="flex items-center gap-1 text-yellow-400 font-bold">
+    🥇 GOLD TIER
+  </div>
+) : (
+  <div className="flex items-center gap-1 text-orange-400 font-bold">
+    🥉 BRONZE TIER
+  </div>
+)}
               {(walletDetails?.AetherbotBalance ?? 0) < 0.5 && (
                 <div className="flex items-center gap-1 text-red-400">
                   <AlertTriangle className="h-4 w-4" />
