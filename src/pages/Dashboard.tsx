@@ -154,9 +154,9 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Low Balance Warning */}
-        {(solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) < 50000) && (
-          <Alert className="mb-6 bg-red-950/30 border-red-900/50">
+       {/* Low Balance Warning */}
+{(solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) < 300) && (
+  <Alert className="mb-6 bg-red-950/30 border-red-900/50">
             <AlertTriangle className="h-4 w-4 text-red-400" />
             <AlertDescription className="text-red-400">
               <strong>Insufficient Balance Warning</strong>
