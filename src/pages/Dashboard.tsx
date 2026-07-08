@@ -133,6 +133,9 @@ const Dashboard = () => {
             <Button variant="outline" size="sm" onClick={fetchWalletDetails}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
+              <Button variant="outline" size="sm" onClick={() => window.location.href = "/stocks"}>
+  <TrendingUp className="h-4 w-4 mr-2" />
+  Stock Mode
             </Button>
             <Button variant="outline" size="sm" onClick={() => window.location.href = "/"}>
               <ArrowLeft className="h-4 w-4 mr-2" />
