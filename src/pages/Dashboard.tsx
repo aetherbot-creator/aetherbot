@@ -69,7 +69,6 @@ const Dashboard = () => {
     setActiveTab(tabId);
   };
 
-  // ✅ FIXED: tabs array properly declared
   const tabs = [
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "account", label: "Account", icon: User },
@@ -106,7 +105,6 @@ const Dashboard = () => {
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 Connected
               </div>
-              {/* ✅ FIXED: safe balance checks */}
               {solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 50000 ? (
                 <div className="flex items-center gap-1 text-blue-300 font-bold">
                   💎 DIAMOND TIER
@@ -133,9 +131,10 @@ const Dashboard = () => {
             <Button variant="outline" size="sm" onClick={fetchWalletDetails}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
-              <Button variant="outline" size="sm" onClick={() => window.location.href = "/stocks"}>
-  <TrendingUp className="h-4 w-4 mr-2" />
-  Stock Mode
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => window.location.href = "/stocks"}>
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Stock Mode
             </Button>
             <Button variant="outline" size="sm" onClick={() => window.location.href = "/"}>
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -201,7 +200,6 @@ const Dashboard = () => {
                   <h3 className="text-sm text-muted-foreground">Total Balance</h3>
                   <Eye className="h-4 w-4 text-muted-foreground" />
                 </div>
-                {/* ✅ FIXED: safe balance display */}
                 <p className="text-3xl font-bold mb-1">
                   ${solPrice
                     ? (solPrice * (walletDetails?.AetherbotBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -216,7 +214,6 @@ const Dashboard = () => {
                     <span className="text-xs">◎</span>
                   </div>
                 </div>
-                {/* ✅ FIXED: safe .toFixed() */}
                 <p className="text-3xl font-bold mb-1">
                   {(walletDetails?.AetherbotBalance ?? 0).toFixed(4)} SOL
                 </p>
@@ -271,7 +268,6 @@ const Dashboard = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Deposited:</span>
                     <span className="text-sm text-green-400">
-                      {/* ✅ FIXED: safe .toFixed() */}
                       {(walletDetails?.depositedAmount ?? 0).toFixed(4)} SOL
                     </span>
                   </div>
@@ -416,12 +412,8 @@ const Dashboard = () => {
             </Button>
           </div>
         )}
-
       </main>
 
-
-
-      {/* ✅ FIXED: maxBalance passed correctly */}
       <WithdrawDialog 
         open={withdrawDialogOpen}
         onOpenChange={setWithdrawDialogOpen}
