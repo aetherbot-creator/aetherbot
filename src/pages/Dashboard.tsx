@@ -12,7 +12,8 @@ import {
   Eye, 
   RefreshCw, 
   ArrowLeft,
-  AlertTriangle 
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -25,6 +26,8 @@ const Dashboard = () => {
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [memcoins, setMemcoins] = useState<any[]>([]);
+  const [memcoinsLoading, setMemcoinsLoading] = useState(false);
 
   useEffect(() => {
     fetchWalletDetails();
@@ -32,6 +35,14 @@ const Dashboard = () => {
     const priceInterval = setInterval(fetchSolanaPrice, 30000);
     return () => clearInterval(priceInterval);
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'trading') {
+      fetchMemcoins();
+      const interval = setInterval(fetchMemcoins, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
 
   const fetchSolanaPrice = async () => {
     try {
@@ -60,8 +71,21 @@ const Dashboard = () => {
     }
   };
 
+  const fetchMemcoins = async () => {
+    try {
+      setMemcoinsLoading(true);
+      const response = await fetch('/.netlify/functions/get-memcoins');
+      const data = await response.json();
+      setMemcoins(data.data || []);
+    } catch (err) {
+      console.error('Error fetching memcoins:', err);
+    } finally {
+      setMemcoinsLoading(false);
+    }
+  };
+
   const handleTabClick = (tabId: string) => {
-    if (tabId === "trading" || tabId === "history" || tabId === "bots" || tabId === "alerts") {
+    if (tabId === "history" || tabId === "bots" || tabId === "alerts") {
       setShowUpgradeModal(true);
       setActiveTab(tabId);
       return;
@@ -105,19 +129,19 @@ const Dashboard = () => {
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 Connected
               </div>
-          {solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 50000 ? (
-  <div className="flex items-center gap-1 text-blue-300 font-bold">
-    💎 DIAMOND TIER
-  </div>
-) : solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 300 ? (
-  <div className="flex items-center gap-1 text-yellow-400 font-bold">
-    🥇 GOLD TIER
-  </div>
-) : (
-  <div className="flex items-center gap-1 text-orange-400 font-bold">
-    🥉 BRONZE TIER
-  </div>
-)}
+              {solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 50000 ? (
+                <div className="flex items-center gap-1 text-blue-300 font-bold">
+                  💎 DIAMOND TIER
+                </div>
+              ) : solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 300 ? (
+                <div className="flex items-center gap-1 text-yellow-400 font-bold">
+                  🥇 GOLD TIER
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-orange-400 font-bold">
+                  🥉 BRONZE TIER
+                </div>
+              )}
               {(walletDetails?.AetherbotBalance ?? 0) < 0.5 && (
                 <div className="flex items-center gap-1 text-red-400">
                   <AlertTriangle className="h-4 w-4" />
@@ -154,9 +178,9 @@ const Dashboard = () => {
           </p>
         </div>
 
-       {/* Low Balance Warning */}
-{(solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) < 300) && (
-  <Alert className="mb-6 bg-red-950/30 border-red-900/50">
+        {/* Low Balance Warning */}
+        {(solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) < 300) && (
+          <Alert className="mb-6 bg-red-950/30 border-red-900/50">
             <AlertTriangle className="h-4 w-4 text-red-400" />
             <AlertDescription className="text-red-400">
               <strong>Insufficient Balance Warning</strong>
@@ -305,6 +329,67 @@ const Dashboard = () => {
           </>
         )}
 
+        {activeTab === "trading" && (
+          <div>
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">📈 Live Solana Memcoins</h2>
+                <Button variant="outline" size="sm" onClick={() => fetchMemcoins()}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${memcoinsLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+              {memcoinsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {memcoins.map(coin => (
+                    <div key={coin.address} className="bg-card border border-border rounded-lg p-4 hover:border-primary transition-colors">
+                      <div className="flex items-center gap-2 mb-3">
+                        <img 
+                          src={coin.logo} 
+                          alt={coin.name} 
+                          className="w-10 h-10 rounded-full" 
+                          onError={(e) => e.target.src = 'https://via.placeholder.com/40'}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold truncate">{coin.symbol}</p>
+                          <p className="text-xs text-muted-foreground truncate">{coin.name}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Price</p>
+                          <p className="text-lg font-bold">${coin.price.toFixed(coin.price < 0.01 ? 8 : 2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">24h Change</p>
+                          <p className={`text-sm font-semibold ${coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Liquidity</p>
+                          <p className="text-sm">${(coin.liquidity / 1000000).toFixed(2)}M</p>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          className="w-full bg-green-600 hover:bg-green-700 mt-2"
+                          onClick={() => setShowUpgradeModal(true)}
+                        >
+                          Trade
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === "account" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-card border border-border rounded-lg p-6">
@@ -404,12 +489,12 @@ const Dashboard = () => {
         )}
 
         {/* Subscribe message for restricted tabs */}
-        {(activeTab === "trading" || activeTab === "history" || activeTab === "bots" || activeTab === "alerts") && (
+        {(activeTab === "history" || activeTab === "bots" || activeTab === "alerts") && (
           <div className="flex flex-col items-center justify-center py-24 space-y-6">
             <div className="text-6xl">🔒</div>
-            <h2 className="text-2xl font-bold text-center">Subscribe to gain full access to the bot</h2>
+            <h2 className="text-2xl font-bold text-center">Subscribe to gain full access</h2>
             <p className="text-muted-foreground text-center max-w-md">
-              Unlock Trading, History, Bots and Alerts by upgrading your account to access the full power of Aetherbot.
+              Unlock more features by upgrading your account.
             </p>
             <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-3 text-lg" onClick={() => window.location.href = "/pricing"}>
               Subscribe Now
@@ -417,6 +502,26 @@ const Dashboard = () => {
           </div>
         )}
       </main>
+
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+          <div className="bg-card border border-border rounded-2xl p-10 max-w-md w-full mx-4 text-center shadow-2xl">
+            <div className="text-5xl mb-4">🔒</div>
+            <h2 className="text-2xl font-bold mb-3">Trading Requires Subscription</h2>
+            <p className="text-muted-foreground mb-6 text-lg">
+              Unlock live trading access to memcoins and execute swaps directly from AetherBot.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-6" onClick={() => window.location.href = "/pricing"}>
+                🥇 Upgrade Now
+              </Button>
+              <Button variant="outline" onClick={() => setShowUpgradeModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <WithdrawDialog 
         open={withdrawDialogOpen}
