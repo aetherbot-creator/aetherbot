@@ -28,6 +28,8 @@ const Dashboard = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [memcoins, setMemcoins] = useState<any[]>([]);
   const [memcoinsLoading, setMemcoinsLoading] = useState(false);
+ const [newTokens, setNewTokens] = useState<any[]>([]);
+  const [newTokensLoading, setNewTokensLoading] = useState(false);
 
   useEffect(() => {
     fetchWalletDetails();
