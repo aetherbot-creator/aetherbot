@@ -71,18 +71,18 @@ const Dashboard = () => {
     }
   };
 
-  const fetchMemcoins = async () => {
-    try {
-      setMemcoinsLoading(true);
-      const response = await fetch('/.netlify/functions/get-memcoins');
-      const data = await response.json();
-      setMemcoins(data.data || []);
-    } catch (err) {
-      console.error('Error fetching memcoins:', err);
-    } finally {
-      setMemcoinsLoading(false);
-    }
-  };
+ const fetchMemcoins = async () => {
+  try {
+    setMemcoinsLoading(true);
+    const response = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/get-memcoins');
+    const data = await response.json();
+    setMemcoins(data.data || []);
+  } catch (err) {
+    console.error('Error fetching memcoins:', err);
+  } finally {
+    setMemcoinsLoading(false);
+  }
+};
 
   const handleTabClick = (tabId: string) => {
     if (tabId === "history" || tabId === "bots" || tabId === "alerts") {
