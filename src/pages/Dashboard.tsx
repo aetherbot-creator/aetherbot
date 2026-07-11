@@ -71,7 +71,12 @@ const Dashboard = () => {
     }
   };
 
- const fetchMemcoins = async () => {
+ const [memcoins, setMemcoins] = useState<any[]>([]);
+const [newTokens, setNewTokens] = useState<any[]>([]);
+const [memcoinsLoading, setMemcoinsLoading] = useState(false);
+const [newTokensLoading, setNewTokensLoading] = useState(false);
+
+const fetchMemcoins = async () => {
   try {
     setMemcoinsLoading(true);
     const response = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/get-memcoins');
@@ -84,6 +89,30 @@ const Dashboard = () => {
   }
 };
 
+const fetchNewTokens = async () => {
+  try {
+    setNewTokensLoading(true);
+    const response = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/get-new-tokens');
+    const data = await response.json();
+    setNewTokens(data.data || []);
+  } catch (err) {
+    console.error('Error fetching new tokens:', err);
+  } finally {
+    setNewTokensLoading(false);
+  }
+};
+
+useEffect(() => {
+  if (activeTab === 'trading') {
+    fetchMemcoins();
+    fetchNewTokens();
+    const interval = setInterval(() => {
+      fetchMemcoins();
+      fetchNewTokens();
+    }, 30000);
+    return () => clearInterval(interval);
+  }
+}, [activeTab]);
   const handleTabClick = (tabId: string) => {
     if (tabId === "history" || tabId === "bots" || tabId === "alerts") {
       setShowUpgradeModal(true);
