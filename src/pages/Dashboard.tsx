@@ -358,67 +358,115 @@ useEffect(() => {
           </>
         )}
 
-        {activeTab === "trading" && (
-          <div>
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold">📈 Live Solana Memcoins</h2>
-                <Button variant="outline" size="sm" onClick={() => fetchMemcoins()}>
-                  <RefreshCw className={`h-4 w-4 mr-2 ${memcoinsLoading ? 'animate-spin' : ''}`} />
-                  Refresh
+       {activeTab === "trading" && (
+  <div>
+    {/* Meme Coins Section */}
+    <div className="mb-12">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold">📉 Meme Coins (Under 500M)</h2>
+        <Button variant="outline" size="sm" onClick={() => fetchMemcoins()}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${memcoinsLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+      {memcoinsLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {memcoins.map(coin => (
+            <div key={coin.address} className="bg-card border border-border rounded-lg p-4 hover:border-primary transition-colors">
+              <div className="flex items-center gap-2 mb-3">
+                <img src={coin.logo} alt={coin.name} className="w-10 h-10 rounded-full" onError={(e) => e.target.src = 'https://via.placeholder.com/40'} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold truncate">{coin.symbol}</p>
+                  <p className="text-xs text-muted-foreground truncate">{coin.name}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Price</p>
+                  <p className="text-lg font-bold">${coin.price.toFixed(coin.price < 0.01 ? 8 : 2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">24h Change</p>
+                  <p className={`text-sm font-semibold ${coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Market Cap</p>
+                  <p className="text-sm">${(coin.marketCap / 1000000).toFixed(2)}M</p>
+                </div>
+                <Button 
+                  size="sm" 
+                  className="w-full bg-red-600 hover:bg-red-700 mt-2"
+                  onClick={() => setShowUpgradeModal(true)}
+                >
+                  Trade
                 </Button>
               </div>
-              {memcoinsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {memcoins.map(coin => (
-                    <div key={coin.address} className="bg-card border border-border rounded-lg p-4 hover:border-primary transition-colors">
-                      <div className="flex items-center gap-2 mb-3">
-                        <img 
-                          src={coin.logo} 
-                          alt={coin.name} 
-                          className="w-10 h-10 rounded-full" 
-                          onError={(e) => e.target.src = 'https://via.placeholder.com/40'}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold truncate">{coin.symbol}</p>
-                          <p className="text-xs text-muted-foreground truncate">{coin.name}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Price</p>
-                          <p className="text-lg font-bold">${coin.price.toFixed(coin.price < 0.01 ? 8 : 2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">24h Change</p>
-                          <p className={`text-sm font-semibold ${coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Liquidity</p>
-                          <p className="text-sm">${(coin.liquidity / 1000000).toFixed(2)}M</p>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          className="w-full bg-green-600 hover:bg-green-700 mt-2"
-                          onClick={() => setShowUpgradeModal(true)}
-                        >
-                          Trade
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+      )}
+    </div>
 
+    {/* New Tokens Section */}
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold">⭐ New Tokens (100k - 10M)</h2>
+        <Button variant="outline" size="sm" onClick={() => fetchNewTokens()}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${newTokensLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+      {newTokensLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {newTokens.map(coin => (
+            <div key={coin.address} className="bg-card border border-border rounded-lg p-4 hover:border-primary transition-colors">
+              <div className="flex items-center gap-2 mb-3">
+                <img src={coin.logo} alt={coin.name} className="w-10 h-10 rounded-full" onError={(e) => e.target.src = 'https://via.placeholder.com/40'} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold truncate">{coin.symbol}</p>
+                  <p className="text-xs text-muted-foreground truncate">{coin.name}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Price</p>
+                  <p className="text-lg font-bold">${coin.price.toFixed(coin.price < 0.01 ? 8 : 2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">24h Change</p>
+                  <p className={`text-sm font-semibold ${coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Market Cap</p>
+                  <p className="text-sm">${(coin.marketCap / 1000000).toFixed(2)}M</p>
+                </div>
+                <Button 
+                  size="sm" 
+                  className="w-full bg-yellow-600 hover:bg-yellow-700 mt-2"
+                  onClick={() => setShowUpgradeModal(true)}
+                >
+                  Trade
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+)}
         {activeTab === "account" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-card border border-border rounded-lg p-6">
