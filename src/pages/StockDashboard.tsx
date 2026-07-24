@@ -1,288 +1,136 @@
-
-import { useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
-import {
-  X, RefreshCw, DollarSign, Wallet, ArrowLeft,
-  TrendingUp, AlertTriangle, Loader2
+import { WithdrawDialog } from "@/components/WithdrawDialog";
+import { useState, useEffect } from "react";
+import { 
+  BarChart3, 
+  TrendingUp, 
+  History, 
+  Bot, 
+  Bell, 
+  User, 
+  Eye, 
+  RefreshCw, 
+  ArrowLeft,
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { walletAPI } from "@/lib/api";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const API_BASE = "https://aetherbotbackend.netlify.app/.netlify/functions";
-const DEFAULT_STOCKS = [
-  { ticker: "AAPL", name: "Apple Inc.",        sector: "tech",    price: 0, change: 0, changePct: 0 },
-  { ticker: "MSFT", name: "Microsoft Corp.",    sector: "tech",    price: 0, change: 0, changePct: 0 },
-  { ticker: "GOOGL",name: "Alphabet Inc.",      sector: "tech",    price: 0, change: 0, changePct: 0 },
-  { ticker: "NVDA", name: "NVIDIA Corp.",       sector: "tech",    price: 0, change: 0, changePct: 0 },
-  { ticker: "META", name: "Meta Platforms",     sector: "tech",    price: 0, change: 0, changePct: 0 },
-  { ticker: "AMZN", name: "Amazon.com Inc.",    sector: "tech",    price: 0, change: 0, changePct: 0 },
-  { ticker: "JPM",  name: "JPMorgan Chase",     sector: "finance", price: 0, change: 0, changePct: 0 },
-  { ticker: "BAC",  name: "Bank of America",    sector: "finance", price: 0, change: 0, changePct: 0 },
-  { ticker: "GS",   name: "Goldman Sachs",      sector: "finance", price: 0, change: 0, changePct: 0 },
-  { ticker: "JNJ",  name: "Johnson & Johnson",  sector: "health",  price: 0, change: 0, changePct: 0 },
-  { ticker: "PFE",  name: "Pfizer Inc.",        sector: "health",  price: 0, change: 0, changePct: 0 },
-  { ticker: "UNH",  name: "UnitedHealth Group", sector: "health",  price: 0, change: 0, changePct: 0 },
-];
+const Dashboard = () => {
+  const [activeTab, setActiveTab] = useState("overview");
+  const [walletDetails, setWalletDetails] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [solPrice, setSolPrice] = useState<number | null>(null);
+  const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  
+  // ✅ ONLY ONE DECLARATION OF EACH STATE VARIABLE
+  const [memcoins, setMemcoins] = useState<any[]>([]);
+  const [newTokens, setNewTokens] = useState<any[]>([]);
+  const [memcoinsLoading, setMemcoinsLoading] = useState(false);
+  const [newTokensLoading, setNewTokensLoading] = useState(false);
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt    = (n: number) => "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtS   = (n: number) => (n >= 0 ? "+" : "-") + fmt(n);
-const fmtSOL = (n: number) => n.toFixed(4) + " SOL";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface Stock { ticker: string; name: string; sector: string; price: number; change: number; changePct: number; }
-interface Holding { shares: number; avgPrice: number; }
-type ModalType =
-  | { type: "convert-to-usd" }
-  | { type: "convert-to-sol" }
-  | { type: "buy";  ticker: string; shares: number }
-  | { type: "sell"; ticker: string; shares: number };
-
-// ─── Component ────────────────────────────────────────────────────────────────
-const StockDashboard = () => {
-  // wallet state
-  const [solBalance,   setSolBalance]   = useState(0);
-  const [stockBalance, setStockBalance] = useState(0);
-  const [solPrice,     setSolPrice]     = useState(0);
-  const [holdings,     setHoldings]     = useState<Record<string, Holding>>({});
-  const [walletLoading, setWalletLoading] = useState(true);
-
-  // stock data
-  const [stocks,       setStocks]       = useState<Stock[]>(DEFAULT_STOCKS);
-  const [stocksLoading, setStocksLoading] = useState(true);
-  const [lastUpdated,  setLastUpdated]  = useState<string | null>(null);
-
-  // ui
-  const [search,    setSearch]    = useState("");
-  const [filter,    setFilter]    = useState("all");
-  const [modal,     setModal]     = useState<ModalType | null>(null);
-  const [convertAmt,setConvertAmt]= useState("");
-  const [toast,     setToast]     = useState("");
-  const [toastType, setToastType] = useState<"success"|"error">("success");
-  const [isSaving,  setIsSaving]  = useState(false);
-
-  const showToast = (msg: string, type: "success"|"error" = "success") => {
-    setToast(msg); setToastType(type);
-    setTimeout(() => setToast(""), 3500);
-  };
-
-  // ── Fetch wallet details ──
-  const fetchWallet = useCallback(async () => {
-    const token = localStorage.getItem("walletToken");
-    if (!token) { window.location.href = "/"; return; }
-    try {
-      setWalletLoading(true);
-      const res = await walletAPI.getWalletDetails(token);
-      const w = res.wallet;
-      setSolBalance(w.AetherbotBalance || 0);
-      setStockBalance(w.stockBalance || 0);
-      setHoldings(w.stockHoldings || {});
-    } catch (err) {
-      console.error("Failed to fetch wallet:", err);
-    } finally {
-      setWalletLoading(false);
-    }
-  }, []);
-
-  // ── Fetch SOL price ──
-  const fetchSolPrice = useCallback(async () => {
-    try {
-      const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
-      const data = await res.json();
-      setSolPrice(data.solana.usd);
-    } catch {
-      console.error("Failed to fetch SOL price");
-    }
-  }, []);
-
-  // ── Fetch stock prices from backend ──
-  const fetchStockPrices = useCallback(async () => {
-    try {
-      setStocksLoading(true);
-      const tickers = DEFAULT_STOCKS.map(s => s.ticker).join(",");
-      const res = await fetch(`${API_BASE}/get-stock-price?tickers=${tickers}`);
-      const data = await res.json();
-      if (data.success) {
-        setStocks(prev => prev.map(s => {
-          const live = data.data[s.ticker];
-          if (live && !live.error) {
-            return { ...s, price: live.price, change: live.change, changePct: live.changePct };
-          }
-          return s;
-        }));
-        setLastUpdated(new Date().toLocaleTimeString());
-      }
-    } catch (err) {
-      console.error("Failed to fetch stock prices:", err);
-    } finally {
-      setStocksLoading(false);
-    }
+  useEffect(() => {
+    fetchWalletDetails();
+    fetchSolanaPrice();
+    const priceInterval = setInterval(fetchSolanaPrice, 30000);
+    return () => clearInterval(priceInterval);
   }, []);
 
   useEffect(() => {
-    fetchWallet();
-    fetchSolPrice();
-    fetchStockPrices();
-    // Refresh SOL price every 30 seconds
-    const solInterval = setInterval(fetchSolPrice, 30000);
-    // Refresh stock prices every 5 minutes (Alpha Vantage free tier)
-    const stockInterval = setInterval(fetchStockPrices, 300000);
-    return () => { clearInterval(solInterval); clearInterval(stockInterval); };
-  }, []);
+    if (activeTab === 'trading') {
+      fetchMemcoins();
+      fetchNewTokens();
+      const interval = setInterval(() => {
+        fetchMemcoins();
+        fetchNewTokens();
+      }, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
 
-  // ── Portfolio calculations ──
-  const portfolioValue = Object.entries(holdings).reduce((sum, [ticker, h]) => {
-    const s = stocks.find(x => x.ticker === ticker);
-    return sum + (s ? s.price * h.shares : 0);
-  }, 0);
-
-  const totalCost   = Object.entries(holdings).reduce((sum, [, h]) => sum + h.avgPrice * h.shares, 0);
-  const totalReturn = portfolioValue - totalCost;
-  const todayGain   = Object.entries(holdings).reduce((sum, [ticker, h]) => {
-    const s = stocks.find(x => x.ticker === ticker);
-    return sum + (s ? s.change * h.shares : 0);
-  }, 0);
-
-  // ── Filtered stocks ──
-  const filteredStocks = stocks.filter(s => {
-    const matchSector = filter === "all" || s.sector === filter;
-    const matchSearch = !search || s.ticker.toLowerCase().includes(search.toLowerCase()) || s.name.toLowerCase().includes(search.toLowerCase());
-    return matchSector && matchSearch;
-  });
-
-  // ── Convert SOL → USD ──
-  const handleConvertToUSD = async () => {
-    const sol = parseFloat(convertAmt);
-    if (!sol || sol <= 0) { showToast("Enter a valid SOL amount.", "error"); return; }
-    if (sol > solBalance)  { showToast("Insufficient SOL balance.", "error"); return; }
-    if (solPrice === 0)    { showToast("SOL price not loaded yet.", "error"); return; }
-    const usd = sol * solPrice;
+  const fetchSolanaPrice = async () => {
     try {
-      setIsSaving(true);
-      const token = localStorage.getItem("walletToken");
-      await fetch(`${API_BASE}/convert-sol-to-usd`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ solAmount: sol, usdAmount: usd, solPrice })
-      });
-      setSolBalance(b => b - sol);
-      setStockBalance(b => b + usd);
-      showToast(`Converted ${fmtSOL(sol)} → ${fmt(usd)} USD`);
-      setConvertAmt(""); setModal(null);
-    } catch {
-      showToast("Conversion failed. Please try again.", "error");
-    } finally {
-      setIsSaving(false);
+      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+      const data = await response.json();
+      setSolPrice(data.solana.usd);
+    } catch (error) {
+      console.error('Failed to fetch Solana price:', error);
     }
   };
 
-  // ── Convert USD → SOL ──
-  const handleConvertToSOL = async () => {
-    const usd = parseFloat(convertAmt);
-    if (!usd || usd <= 0)   { showToast("Enter a valid USD amount.", "error"); return; }
-    if (usd > stockBalance) { showToast("Insufficient stock wallet balance.", "error"); return; }
-    if (solPrice === 0)     { showToast("SOL price not loaded yet.", "error"); return; }
-    const sol = usd / solPrice;
+  const fetchWalletDetails = async () => {
+    const token = localStorage.getItem("walletToken");
+    if (!token) {
+      window.location.href = "/";
+      return;
+    }
     try {
-      setIsSaving(true);
-      const token = localStorage.getItem("walletToken");
-      await fetch(`${API_BASE}/convert-usd-to-sol`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ usdAmount: usd, solAmount: sol, solPrice })
-      });
-      setStockBalance(b => b - usd);
-      setSolBalance(b => b + sol);
-      showToast(`Converted ${fmt(usd)} → ${fmtSOL(sol)}`);
-      setConvertAmt(""); setModal(null);
-    } catch {
-      showToast("Conversion failed. Please try again.", "error");
+      setIsLoading(true);
+      const response = await walletAPI.getWalletDetails(token);
+      setWalletDetails(response.wallet);
+    } catch (error) {
+      console.error("Failed to fetch wallet details:", error);
     } finally {
-      setIsSaving(false);
+      setIsLoading(false);
     }
   };
 
-  // ── Buy stock ──
-  const handleBuy = async () => {
-    if (!modal || modal.type !== "buy") return;
-    const shares = modal.shares;
-    if (shares < 1) { showToast("Enter at least 1 share.", "error"); return; }
-    const s = stocks.find(x => x.ticker === modal.ticker)!;
-    const cost = shares * s.price;
-    if (cost > stockBalance) { showToast("Insufficient stock wallet balance.", "error"); return; }
+  const fetchMemcoins = async () => {
     try {
-      setIsSaving(true);
-      const token = localStorage.getItem("walletToken");
-      await fetch(`${API_BASE}/buy-stock`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ ticker: modal.ticker, shares, price: s.price, totalCost: cost })
-      });
-      setStockBalance(b => b - cost);
-      setHoldings(h => {
-        const ex = h[modal.ticker];
-        if (ex) {
-          const tot = ex.shares + shares;
-          return { ...h, [modal.ticker]: { shares: tot, avgPrice: ((ex.avgPrice * ex.shares) + (s.price * shares)) / tot } };
-        }
-        return { ...h, [modal.ticker]: { shares, avgPrice: s.price } };
-      });
-      showToast(`Bought ${shares} share${shares > 1 ? "s" : ""} of ${modal.ticker} for ${fmt(cost)}`);
-      setModal(null);
-    } catch {
-      showToast("Purchase failed. Please try again.", "error");
+      setMemcoinsLoading(true);
+      const response = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/get-memcoins');
+      const data = await response.json();
+      setMemcoins(data.data || []);
+    } catch (err) {
+      console.error('Error fetching memcoins:', err);
     } finally {
-      setIsSaving(false);
+      setMemcoinsLoading(false);
     }
   };
 
-  // ── Sell stock ──
-  const handleSell = async () => {
-    if (!modal || modal.type !== "sell") return;
-    const shares = modal.shares;
-    const h = holdings[modal.ticker];
-    if (!h || shares > h.shares) { showToast("Not enough shares.", "error"); return; }
-    const s = stocks.find(x => x.ticker === modal.ticker)!;
-    const proceeds = shares * s.price;
+  const fetchNewTokens = async () => {
     try {
-      setIsSaving(true);
-      const token = localStorage.getItem("walletToken");
-      await fetch(`${API_BASE}/sell-stock`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ ticker: modal.ticker, shares, price: s.price, proceeds })
-      });
-      setStockBalance(b => b + proceeds);
-      setHoldings(prev => {
-        const newShares = prev[modal.ticker].shares - shares;
-        if (newShares === 0) { const { [modal.ticker]: _, ...rest } = prev; return rest; }
-        return { ...prev, [modal.ticker]: { ...prev[modal.ticker], shares: newShares } };
-      });
-      showToast(`Sold ${shares} share${shares > 1 ? "s" : ""} of ${modal.ticker} for ${fmt(proceeds)}`);
-      setModal(null);
-    } catch {
-      showToast("Sale failed. Please try again.", "error");
+      setNewTokensLoading(true);
+      const response = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/get-new-tokens');
+      const data = await response.json();
+      setNewTokens(data.data || []);
+    } catch (err) {
+      console.error('Error fetching new tokens:', err);
     } finally {
-      setIsSaving(false);
+      setNewTokensLoading(false);
     }
   };
 
-  const modalStock  = modal?.type === "buy" || modal?.type === "sell" ? stocks.find(x => x.ticker === modal.ticker) : null;
-  const modalShares = modal?.type === "buy" || modal?.type === "sell" ? modal.shares : 0;
-  const modalTotal  = modalStock ? modalShares * modalStock.price : 0;
-  const modalPnl    = modal?.type === "sell" && modalStock && holdings[modal.ticker]
-    ? (modalStock.price - holdings[modal.ticker].avgPrice) * modalShares : 0;
+  const handleTabClick = (tabId: string) => {
+    if (tabId === "history" || tabId === "bots" || tabId === "alerts") {
+      setShowUpgradeModal(true);
+      setActiveTab(tabId);
+      return;
+    }
+    setActiveTab(tabId);
+  };
 
-  if (walletLoading) {
+  const tabs = [
+    { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "account", label: "Account", icon: User },
+    { id: "trading", label: "Trading", icon: TrendingUp },
+    { id: "history", label: "History", icon: History },
+    { id: "bots", label: "Bots", icon: Bot },
+    { id: "alerts", label: "Alerts", icon: Bell },
+  ];
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <main className="flex items-center justify-center min-h-[400px] pt-24">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <main className="w-full px-6 py-6 pt-24">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+          </div>
         </main>
         <Footer />
       </div>
@@ -293,359 +141,466 @@ const StockDashboard = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       <main className="w-full px-6 py-6 pt-24">
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">📈 Stock Dashboard</h1>
-            <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full font-medium">LIVE TRADING</span>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold">Wallet Dashboard</h1>
+            <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-1 text-green-400">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                Connected
+              </div>
+              {solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 50000 ? (
+                <div className="flex items-center gap-1 text-blue-300 font-bold">
+                  💎 DIAMOND TIER
+                </div>
+              ) : solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 300 ? (
+                <div className="flex items-center gap-1 text-yellow-400 font-bold">
+                  🥇 GOLD TIER
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-orange-400 font-bold">
+                  🥉 BRONZE TIER
+                </div>
+              )}
+              {(walletDetails?.AetherbotBalance ?? 0) < 0.5 && (
+                <div className="flex items-center gap-1 text-red-400">
+                  <AlertTriangle className="h-4 w-4" />
+                  Low Balance
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-xs text-muted-foreground">SOL Price</p>
-              <p className="text-sm font-medium">{solPrice ? fmt(solPrice) : "Loading..."}</p>
+              <p className="text-sm text-muted-foreground">
+                SOL Price: {solPrice ? `$${solPrice.toFixed(2)}` : 'Loading...'}
+              </p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => { fetchStockPrices(); fetchSolPrice(); }}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${stocksLoading ? "animate-spin" : ""}`} />
+            <Button variant="outline" size="sm" onClick={fetchWalletDetails}>
+              <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
-            <Button variant="outline" size="sm" onClick={() => window.location.href = "/dashboard"}>
-              <ArrowLeft className="h-4 w-4 mr-2" /> Crypto Mode
+            <Button variant="outline" size="sm" onClick={() => window.location.href = "/stocks"}>
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Stock Mode
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => window.location.href = "/"}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Trading
             </Button>
           </div>
         </div>
 
-        {/* ── Last updated ── */}
-        {lastUpdated && (
-          <p className="text-xs text-muted-foreground mb-4">
-            Prices last updated: {lastUpdated} · Refreshes every 5 minutes
+        {/* Welcome Message */}
+        <div className="mb-6">
+          <p className="text-muted-foreground">
+            Welcome back, {walletDetails?.walletType || "Trader"} • {walletDetails?.walletAddress}
           </p>
-        )}
-
-        {/* ── Balance cards ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-card border border-border rounded-lg p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Wallet className="h-4 w-4 text-purple-400" />
-              <span className="text-sm text-muted-foreground">Aetherbot SOL Balance</span>
-            </div>
-            <p className="text-2xl font-bold">{fmtSOL(solBalance)}</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              ≈ {solPrice ? fmt(solBalance * solPrice) : "..."} USD
-            </p>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="h-4 w-4 text-green-400" />
-              <span className="text-sm text-muted-foreground">Stock Wallet (USD)</span>
-            </div>
-            <p className="text-2xl font-bold">{fmt(stockBalance)}</p>
-            <p className="text-sm text-muted-foreground mt-1">Available for trading</p>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-5">
-            <p className="text-sm text-muted-foreground mb-3">Convert between wallets</p>
-            <div className="flex gap-2">
-              <Button size="sm" className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-xs"
-                onClick={() => { setConvertAmt(""); setModal({ type: "convert-to-usd" }); }}>
-                SOL → USD
-              </Button>
-              <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs"
-                onClick={() => { setConvertAmt(""); setModal({ type: "convert-to-sol" }); }}>
-                USD → SOL
-              </Button>
-            </div>
-          </div>
         </div>
 
-        {/* ── Empty wallet alert ── */}
-        {stockBalance === 0 && Object.keys(holdings).length === 0 && (
-          <Alert className="mb-6 bg-yellow-950/30 border-yellow-900/50">
-            <AlertTriangle className="h-4 w-4 text-yellow-400" />
-            <AlertDescription className="text-yellow-400">
-              Your stock wallet is empty. Convert some SOL to USD to start trading stocks.
-              <Button size="sm" className="ml-3 bg-yellow-500 hover:bg-yellow-600 text-black text-xs"
-                onClick={() => { setConvertAmt(""); setModal({ type: "convert-to-usd" }); }}>
-                Convert Now
-              </Button>
+        {/* Low Balance Warning */}
+        {(solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) < 300) && (
+          <Alert className="mb-6 bg-red-950/30 border-red-900/50">
+            <AlertTriangle className="h-4 w-4 text-red-400" />
+            <AlertDescription className="text-red-400">
+              <strong>Insufficient Balance Warning</strong>
+              <p className="mt-1">
+                Your current balance is below the minimum required to trade effectively.
+                Most platform features are temporarily disabled until you add more funds.
+              </p>
+              <div className="flex gap-2 mt-3">
+                <Button size="sm" className="bg-red-600 hover:bg-red-700">Add Funds</Button>
+                <Button size="sm" variant="outline">View Markets</Button>
+              </div>
             </AlertDescription>
           </Alert>
         )}
 
-        {/* ── Portfolio metrics ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-card border border-border rounded-lg p-4">
-            <p className="text-xs text-muted-foreground mb-1">Portfolio Value</p>
-            <p className="text-2xl font-bold">{fmt(portfolioValue)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{Object.keys(holdings).length} stock{Object.keys(holdings).length !== 1 ? "s" : ""}</p>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <p className="text-xs text-muted-foreground mb-1">Total Return</p>
-            <p className={`text-2xl font-bold ${totalReturn >= 0 ? "text-green-400" : "text-red-400"}`}>
-              {totalReturn === 0 ? "$0.00" : fmtS(totalReturn)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {totalCost > 0 ? `${totalReturn >= 0 ? "+" : ""}${((totalReturn / totalCost) * 100).toFixed(2)}% all time` : "—"}
-            </p>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <p className="text-xs text-muted-foreground mb-1">Holdings</p>
-            <p className="text-2xl font-bold">{Object.keys(holdings).length}</p>
-            <p className="text-xs text-muted-foreground mt-1">stocks owned</p>
-          </div>
-          <div className="bg-card border border-border rounded-lg p-4">
-            <p className="text-xs text-muted-foreground mb-1">Today's Gain</p>
-            <p className={`text-2xl font-bold ${todayGain >= 0 ? "text-green-400" : "text-red-400"}`}>
-              {todayGain === 0 ? "$0.00" : fmtS(todayGain)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {totalCost > 0 ? `${todayGain >= 0 ? "+" : ""}${((todayGain / totalCost) * 100).toFixed(2)}% today` : "—"}
-            </p>
+        {/* Tabs */}
+        <div className="border-b border-border mb-6">
+          <div className="flex gap-6">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabClick(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+                    activeTab === tab.id
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* ── Main content ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Watchlist */}
-          <div className="lg:col-span-2 bg-card border border-border rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <h3 className="font-semibold">Market Watchlist</h3>
-              <div className="flex gap-1">
-                {["all", "tech", "finance", "health"].map(f => (
-                  <button key={f} onClick={() => setFilter(f)}
-                    className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                      filter === f ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground"
-                    }`}>
-                    {f.charAt(0).toUpperCase() + f.slice(1)}
-                  </button>
-                ))}
+        {/* Dashboard Content */}
+        {activeTab === "overview" && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              <div className="bg-card border border-border rounded-lg p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm text-muted-foreground">Total Balance</h3>
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-3xl font-bold mb-1">
+                  ${solPrice
+                    ? (solPrice * (walletDetails?.AetherbotBalance ?? 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : "0.00"}
+                </p>
+              </div>
+
+              <div className="bg-card border border-border rounded-lg p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm text-muted-foreground">Aetherbot Balance</h3>
+                  <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
+                    <span className="text-xs">◎</span>
+                  </div>
+                </div>
+                <p className="text-3xl font-bold mb-1">
+                  {(walletDetails?.AetherbotBalance ?? 0).toFixed(4)} SOL
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  ≈ ${solPrice
+                    ? (solPrice * (walletDetails?.AetherbotBalance ?? 0)).toFixed(2)
+                    : "0.00"}
+                </p>
+              </div>
+
+              <div className="bg-card border border-border rounded-lg p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm text-muted-foreground">AutoSnipe Bots</h3>
+                  <Bot className="h-4 w-4 text-primary" />
+                </div>
+                <p className="text-3xl font-bold mb-1">{walletDetails?.autoSnipeBot || 0}</p>
+                <p className="text-sm text-blue-400">{walletDetails?.autoSnipeBot || 0} total configs</p>
+              </div>
+
+              <div className="bg-card border border-border rounded-lg p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm text-muted-foreground">Total Trades</h3>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-3xl font-bold mb-1">{walletDetails?.totalTrade || 0}</p>
+                <p className="text-sm text-muted-foreground">All time</p>
               </div>
             </div>
-            <div className="px-4 py-2 border-b border-border">
-              <Input placeholder="Search ticker or company..." value={search}
-                onChange={e => setSearch(e.target.value)} className="h-8 text-sm" />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="bg-card border border-border rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">Account Status</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Status</span>
+                    <span className="text-sm text-green-400">active</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Member since</span>
+                    <span className="text-sm">
+                      {walletDetails?.createdAt 
+                        ? new Date(walletDetails.createdAt).toLocaleDateString()
+                        : "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-card border border-border rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">Deposits & Withdrawals</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Deposited:</span>
+                    <span className="text-sm text-green-400">
+                      {(walletDetails?.depositedAmount ?? 0).toFixed(4)} SOL
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Withdrawn:</span>
+                    <span className="text-sm text-red-400">0.0000 SOL</span>
+                  </div>
+                </div>
+                <Button variant="outline" className="w-full mt-4" onClick={() => setWithdrawDialogOpen(true)}>
+                  Withdraw Funds
+                </Button>
+              </div>
+
+              <div className="bg-card border border-border rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">Last Activity</h3>
+                <p className="text-2xl font-bold">
+                  {walletDetails?.lastLoginAt 
+                    ? new Date(walletDetails.lastLoginAt).toLocaleString()
+                    : "N/A"}
+                </p>
+              </div>
             </div>
-            <div className="divide-y divide-border max-h-96 overflow-y-auto">
-              {stocksLoading ? (
+
+            <div className="bg-card border border-border rounded-lg p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Bot className="h-5 w-5" />
+                <h3 className="text-lg font-semibold">AutoSnipe Configurations</h3>
+              </div>
+              <p className="text-muted-foreground text-center py-12">No AutoSnipe configurations found</p>
+            </div>
+          </>
+        )}
+
+        {activeTab === "trading" && (
+          <div>
+            {/* Meme Coins Section */}
+            <div className="mb-12">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">📉 Meme Coins (Under 500M)</h2>
+                <Button variant="outline" size="sm" onClick={() => fetchMemcoins()}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${memcoinsLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+              {memcoinsLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-sm text-muted-foreground">Loading live prices...</span>
-                </div>
-              ) : filteredStocks.map(s => (
-                <div key={s.ticker} className="flex items-center px-4 py-3 hover:bg-muted/30 transition-colors group">
-                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground mr-3 flex-shrink-0">
-                    {s.ticker.slice(0, 3)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{s.name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{s.sector}</p>
-                  </div>
-                  <div className="text-right mr-3">
-                    <p className="font-medium text-sm">{s.price > 0 ? fmt(s.price) : "—"}</p>
-                    {s.price > 0 && (
-                      <p className={`text-xs ${s.change >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {fmtS(s.change)} ({s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%)
-                      </p>
-                    )}
-                  </div>
-                  <Button size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => setModal({ type: "buy", ticker: s.ticker, shares: 1 })}
-                    disabled={stockBalance === 0 || s.price === 0}>
-                    Buy
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Portfolio */}
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <h3 className="font-semibold">My Portfolio</h3>
-              {portfolioValue > 0 && (
-                <Button size="sm" variant="outline"
-                  className="text-xs text-blue-400 border-blue-900/50 hover:bg-blue-950/30"
-                  onClick={() => { setConvertAmt(""); setModal({ type: "convert-to-sol" }); }}>
-                  Withdraw → SOL
-                </Button>
-              )}
-            </div>
-            <div className="divide-y divide-border max-h-96 overflow-y-auto">
-              {Object.keys(holdings).length === 0 ? (
-                <div className="px-4 py-8 text-center text-muted-foreground text-sm leading-relaxed">
-                  No holdings yet.<br />Buy a stock to get started.
                 </div>
               ) : (
-                Object.entries(holdings).map(([ticker, h]) => {
-                  const s = stocks.find(x => x.ticker === ticker);
-                  const currentPrice = s?.price || h.avgPrice;
-                  const val  = currentPrice * h.shares;
-                  const pnl  = (currentPrice - h.avgPrice) * h.shares;
-                  const pnlP = (pnl / (h.avgPrice * h.shares)) * 100;
-                  return (
-                    <div key={ticker} className="flex items-center px-4 py-3">
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{ticker}</p>
-                        <p className="text-xs text-muted-foreground">{h.shares} shares @ {fmt(h.avgPrice)}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {memcoins.map(coin => (
+                    <div key={coin.address} className="bg-card border border-border rounded-lg p-4 hover:border-primary transition-colors">
+                      <div className="flex items-center gap-2 mb-3">
+                        <img src={coin.logo} alt={coin.name} className="w-10 h-10 rounded-full" onError={(e) => e.target.src = 'https://via.placeholder.com/40'} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold truncate">{coin.symbol}</p>
+                          <p className="text-xs text-muted-foreground truncate">{coin.name}</p>
+                        </div>
                       </div>
-                      <div className="text-right mr-2">
-                        <p className="font-medium text-sm">{fmt(val)}</p>
-                        <p className={`text-xs ${pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                          {fmtS(pnl)} ({pnl >= 0 ? "+" : ""}{pnlP.toFixed(2)}%)
-                        </p>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Price</p>
+                          <p className="text-lg font-bold">${coin.price.toFixed(coin.price < 0.01 ? 8 : 2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">24h Change</p>
+                          <p className={`text-sm font-semibold ${coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Market Cap</p>
+                          <p className="text-sm">${(coin.marketCap / 1000000).toFixed(2)}M</p>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          className="w-full bg-red-600 hover:bg-red-700 mt-2"
+                          onClick={() => setShowUpgradeModal(true)}
+                        >
+                          Trade
+                        </Button>
                       </div>
-                      <Button size="sm" variant="outline"
-                        className="text-red-400 border-red-900/50 hover:bg-red-950/30 text-xs"
-                        onClick={() => setModal({ type: "sell", ticker, shares: 1 })}>
-                        Sell
-                      </Button>
                     </div>
-                  );
-                })
+                  ))}
+                </div>
               )}
             </div>
-          </div>
-        </div>
 
-        {/* ══════════ MODALS ══════════ */}
-        {/* Convert SOL → USD */}
-        {modal?.type === "convert-to-usd" && (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-            <div className="bg-card border border-border rounded-2xl p-6 w-80 mx-4">
+            {/* New Tokens Section */}
+            <div>
               <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-lg">Convert SOL → USD</h3>
-                  <p className="text-sm text-muted-foreground">Fund your stock wallet</p>
-                </div>
-                <button onClick={() => setModal(null)}><X className="h-5 w-5 text-muted-foreground" /></button>
-              </div>
-              <div className="space-y-3 mb-4">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Amount in SOL (max {fmtSOL(solBalance)})</p>
-                  <Input type="number" min={0.01} max={solBalance} step={0.01}
-                    placeholder="0.00" value={convertAmt} onChange={e => setConvertAmt(e.target.value)} />
-                </div>
-                <div className="bg-muted/30 rounded-lg p-3 space-y-1 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">SOL price</span><span className="font-medium">{solPrice ? fmt(solPrice) : "..."}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">You receive</span><span className="font-medium text-green-400">{fmt((parseFloat(convertAmt) || 0) * solPrice)} USD</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">SOL balance after</span><span className="font-medium">{fmtSOL(solBalance - (parseFloat(convertAmt) || 0))}</span></div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setModal(null)} disabled={isSaving}>Cancel</Button>
-                <Button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white" onClick={handleConvertToUSD} disabled={isSaving}>
-                  {isSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Converting...</> : "Convert"}
+                <h2 className="text-2xl font-bold">⭐ New Tokens (100k - 10M)</h2>
+                <Button variant="outline" size="sm" onClick={() => fetchNewTokens()}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${newTokensLoading ? 'animate-spin' : ''}`} />
+                  Refresh
                 </Button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Convert USD → SOL */}
-        {modal?.type === "convert-to-sol" && (          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-            <div className="bg-card border border-border rounded-2xl p-6 w-80 mx-4">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-lg">Convert USD → SOL</h3>
-                  <p className="text-sm text-muted-foreground">Move funds back to Aetherbot</p>
+              {newTokensLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-                <button onClick={() => setModal(null)}><X className="h-5 w-5 text-muted-foreground" /></button>
-              </div>
-              <div className="space-y-3 mb-4">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Amount in USD (max {fmt(stockBalance)})</p>
-                  <Input type="number" min={0.01} max={stockBalance} step={0.01}
-                    placeholder="0.00" value={convertAmt} onChange={e => setConvertAmt(e.target.value)} />
-                </div>
-                <div className="bg-muted/30 rounded-lg p-3 space-y-1 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">SOL price</span><span className="font-medium">{solPrice ? fmt(solPrice) : "..."}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">You receive</span><span className="font-medium text-purple-400">{fmtSOL((parseFloat(convertAmt) || 0) / (solPrice || 1))}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">USD balance after</span><span className="font-medium">{fmt(stockBalance - (parseFloat(convertAmt) || 0))}</span></div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setModal(null)} disabled={isSaving}>Cancel</Button>
-                <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={handleConvertToSOL} disabled={isSaving}>
-                  {isSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Converting...</> : "Convert"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Buy / Sell */}
-        {(modal?.type === "buy" || modal?.type === "sell") && modalStock && (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-            <div className="bg-card border border-border rounded-2xl p-6 w-80 mx-4">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-lg">{modal.type === "buy" ? "Buy" : "Sell"} {modal.ticker}</h3>
-                  <p className="text-sm text-muted-foreground">{modalStock.name}</p>
-                </div>
-                <button onClick={() => setModal(null)}><X className="h-5 w-5 text-muted-foreground" /></button>
-              </div>
-              <div className="space-y-3 mb-4">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Number of shares {modal.type === "buy"
-                      ? `(max ${Math.floor(stockBalance / modalStock.price)})`
-                      : `(max ${holdings[modal.ticker]?.shares || 0})`}
-                  </p>
-                  <Input type="number" min={1}
-                    max={modal.type === "buy" ? Math.floor(stockBalance / modalStock.price) : holdings[modal.ticker]?.shares}
-                    value={modal.shares}
-                    onChange={e => setModal({ ...modal, shares: parseInt(e.target.value) || 0 })} />
-                </div>
-                <div className="bg-muted/30 rounded-lg p-3 space-y-1 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Price per share</span><span className="font-medium">{fmt(modalStock.price)}</span></div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">{modal.type === "buy" ? "Total cost" : "You receive"}</span>
-                    <span className="font-medium">{fmt(modalTotal)}</span>
-                  </div>
-                  {modal.type === "buy" ? (
-                    <div className="flex justify-between"><span className="text-muted-foreground">Stock wallet balance</span><span className="font-medium">{fmt(stockBalance)}</span></div>
-                  ) : (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">P&L on sale</span>
-                      <span className={`font-medium ${modalPnl >= 0 ? "text-green-400" : "text-red-400"}`}>{fmtS(modalPnl)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => setModal(null)} disabled={isSaving}>Cancel</Button>
-                <Button
-                  className={`flex-1 text-white ${modal.type === "buy" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
-                  onClick={modal.type === "buy" ? handleBuy : handleSell}
-                  disabled={isSaving}>
-                  {isSaving
-                    ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />{modal.type === "buy" ? "Buying..." : "Selling..."}</>
-                    : modal.type === "buy" ? "Buy" : "Sell"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Toast */}
-        {toast && (
-          <div className={`fixed bottom-6 right-6 border rounded-lg px-4 py-3 text-sm shadow-lg z-50 bg-card ${
-            toastType === "error" ? "border-red-900/50 text-red-400" : "border-green-900/50 text-green-400"
-          }`}>
-            <div className="flex items-center gap-2">
-              {toastType === "error" ? (
-                <AlertTriangle className="h-4 w-4" />
               ) : (
-                <TrendingUp className="h-4 w-4" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {newTokens.map(coin => (
+                    <div key={coin.address} className="bg-card border border-border rounded-lg p-4 hover:border-primary transition-colors">
+                      <div className="flex items-center gap-2 mb-3">
+                        <img src={coin.logo} alt={coin.name} className="w-10 h-10 rounded-full" onError={(e) => e.target.src = 'https://via.placeholder.com/40'} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold truncate">{coin.symbol}</p>
+                          <p className="text-xs text-muted-foreground truncate">{coin.name}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Price</p>
+                          <p className="text-lg font-bold">${coin.price.toFixed(coin.price < 0.01 ? 8 : 2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">24h Change</p>
+                          <p className={`text-sm font-semibold ${coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Market Cap</p>
+                          <p className="text-sm">${(coin.marketCap / 1000000).toFixed(2)}M</p>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          className="w-full bg-yellow-600 hover:bg-yellow-700 mt-2"
+                          onClick={() => setShowUpgradeModal(true)}
+                        >
+                          Trade
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
-              <span>{toast}</span>
             </div>
+          </div>
+        )}
+
+        {activeTab === "account" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-card border border-border rounded-lg p-6">
+              <h3 className="text-lg font-semibold mb-6">Wallet Information</h3>
+              <p className="text-sm text-muted-foreground mb-6">Your connected wallet details</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-muted-foreground">Wallet Name</label>
+                  <div className="mt-1 px-3 py-2 bg-muted rounded-md flex items-center gap-2">
+                    <span className="text-sm capitalize">{walletDetails?.walletType || "N/A"}</span>
+                    <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded">
+                      {walletDetails?.walletType || "N/A"}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Wallet Address</label>
+                  <div className="mt-1 px-3 py-2 bg-muted rounded-md flex items-center gap-2">
+                    <span className="text-sm font-mono flex-1 truncate">
+                      {walletDetails?.walletAddress || "N/A"}
+                    </span>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(walletDetails?.walletAddress || "")}
+                      className="text-primary hover:text-primary/80 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Connection Method</label>
+                  <div className="mt-1 px-3 py-2 bg-muted rounded-md">
+                    <span className="text-sm capitalize">
+                      {walletDetails?.inputType === "seed_phrase" ? "Seed Phrase" : 
+                       walletDetails?.inputType === "passphrase" ? "Private Key" : "N/A"}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Member Since</label>
+                  <div className="mt-1 px-3 py-2 bg-muted rounded-md">
+                    <span className="text-sm">
+                      {walletDetails?.createdAt 
+                        ? new Date(walletDetails.createdAt).toLocaleDateString('en-US', { 
+                            month: 'long', day: 'numeric', year: 'numeric' 
+                          })
+                        : "N/A"}
+                    </span>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-4 border-red-900/50 text-red-400 hover:bg-red-950/30 hover:text-red-300"
+                  onClick={() => {
+                    localStorage.removeItem("walletToken");
+                    localStorage.removeItem("walletAddress");
+                    localStorage.removeItem("walletType");
+                    localStorage.removeItem("verifiedEmail");
+                    window.location.href = "/";
+                  }}
+                >
+                  Disconnect Wallet
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-lg p-6">
+              <h3 className="text-lg font-semibold mb-6">API Keys</h3>
+              <p className="text-sm text-muted-foreground mb-6">Manage your API keys for external integrations</p>
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6"/>
+                    <path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"/>
+                    <path d="M1 12h6m6 0h6"/>
+                    <path d="m4.93 19.07 4.24-4.24m5.66-5.66 4.24-4.24"/>
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium mb-1">No API keys generated</p>
+                  <p className="text-xs text-muted-foreground">Create API keys for external integrations</p>
+                </div>
+                <Button variant="outline" className="mt-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                    <path d="M5 12h14"/>
+                    <path d="M12 5v14"/>
+                  </svg>
+                  Generate API Key
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Subscribe message for restricted tabs */}
+        {(activeTab === "history" || activeTab === "bots" || activeTab === "alerts") && (
+          <div className="flex flex-col items-center justify-center py-24 space-y-6">
+            <div className="text-6xl">🔒</div>
+            <h2 className="text-2xl font-bold text-center">Subscribe to gain full access</h2>
+            <p className="text-muted-foreground text-center max-w-md">
+              Unlock more features by upgrading your account.
+            </p>
+            <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-3 text-lg" onClick={() => window.location.href = "/pricing"}>
+              Subscribe Now
+            </Button>
           </div>
         )}
       </main>
+
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+          <div className="bg-card border border-border rounded-2xl p-10 max-w-md w-full mx-4 text-center shadow-2xl">
+            <div className="text-5xl mb-4">🔒</div>
+            <h2 className="text-2xl font-bold mb-3">Trading Requires Subscription</h2>
+            <p className="text-muted-foreground mb-6 text-lg">
+              Unlock live trading access to memcoins and execute swaps directly from AetherBot.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-6" onClick={() => window.location.href = "/pricing"}>
+                🥇 Upgrade Now
+              </Button>
+              <Button variant="outline" onClick={() => setShowUpgradeModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <WithdrawDialog 
+        open={withdrawDialogOpen}
+        onOpenChange={setWithdrawDialogOpen}
+        maxBalance={walletDetails?.AetherbotBalance ?? 0}
+      />
       <Footer />
     </div>
   );
 };
 
-export default StockDashboard;
-
+export default Dashboard;
