@@ -31,6 +31,7 @@ const Dashboard = () => {
   // Trading states
   const [tradeModal, setTradeModal] = useState(false);
   const [selectedCoin, setSelectedCoin] = useState<any>(null);
+  const [isTrading, setIsTrading] = useState(false);
   
   // Holdings state
   const [holdings, setHoldings] = useState<any[]>([]);
@@ -142,16 +143,51 @@ const Dashboard = () => {
       return;
     }
     setActiveTab(tabId);
-    // Refresh holdings when switching to trading tab
     if (tabId === "trading") {
       fetchHoldings();
     }
   };
 
   const handleMemecoinTrade = async (action: 'buy' | 'sell', coin: any, quantity: number, price: number) => {
+    // Calculate total cost in SOL
+    const totalCost = quantity * price;
+    
+    // For buy: Check if user has enough Aetherbot balance
+    if (action === 'buy') {
+      const aetherbotBalance = walletDetails?.AetherbotBalance || 0;
+      if (totalCost > aetherbotBalance) {
+        alert(`❌ Insufficient balance! You need ${totalCost.toFixed(4)} SOL but only have ${aetherbotBalance.toFixed(4)} SOL`);
+        return;
+      }
+    }
+
+    // For sell: Check if user has enough tokens
+    if (action === 'sell') {
+      const holding = holdings.find(h => h.symbol === coin.symbol);
+      if (!holding || holding.balance < quantity) {
+        alert(`❌ Insufficient balance. You only have ${holding?.balance || 0} ${coin.symbol}`);
+        return;
+      }
+    }
+
+    setIsTrading(true);
     try {
-      const token = localStorage.getItem('walletToken');
-      
+      const token = localStorage.getItem("walletToken");
+      if (!token) {
+        alert("Please login again");
+        window.location.href = "/";
+        return;
+      }
+
+      console.log('Sending trade request:', {
+        action,
+        coinSymbol: coin.symbol,
+        price,
+        quantity,
+        totalCost: totalCost,
+        aetherbotBalance: walletDetails?.AetherbotBalance
+      });
+
       const response = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/trade-memecoin', {
         method: 'POST',
         headers: {
@@ -161,23 +197,33 @@ const Dashboard = () => {
         body: JSON.stringify({
           action,
           coinSymbol: coin.symbol,
+          coinAddress: coin.address,
           price,
-          quantity
+          quantity,
+          totalCost: totalCost // Send total cost for the backend to deduct from Aetherbot balance
         })
       });
 
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Response data:', data);
       
       if (data.success) {
-        alert(`Successfully ${action === 'buy' ? 'bought' : 'sold'} ${quantity} ${coin.symbol}!`);
-        // Refresh holdings after trade
+        alert(`✅ Successfully ${action === 'buy' ? 'bought' : 'sold'} ${quantity} ${coin.symbol}!`);
+        // Refresh holdings and wallet details after trade
         await fetchHoldings();
         await fetchWalletDetails();
+        // Close modal
+        setTradeModal(false);
+        setSelectedCoin(null);
       } else {
-        alert('Error: ' + data.error);
+        alert(`❌ Trade failed: ${data.error || 'Unknown error'}`);
       }
-    } catch (error) {
-      alert('Trade failed');
+    } catch (error: any) {
+      console.error('Trade error:', error);
+      alert(`❌ Trade failed: ${error.message || 'Network error'}`);
+    } finally {
+      setIsTrading(false);
     }
   };
 
@@ -422,7 +468,7 @@ const Dashboard = () => {
 
         {activeTab === "trading" && (
           <div>
-            {/* My Holdings Section - NEW */}
+            {/* My Holdings Section */}
             <div className="mb-12">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold">💼 My Holdings</h2>
@@ -449,7 +495,7 @@ const Dashboard = () => {
                       <div className="space-y-2">
                         <div>
                           <p className="text-xs text-muted-foreground">Balance</p>
-                          <p className="text-lg font-bold">{holding.balance.toFixed(4)}</p>
+                          <p className="text-lg font-bold">{holding.balance?.toFixed(4) || '0.0000'}</p>
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Value (USD)</p>
@@ -525,12 +571,12 @@ const Dashboard = () => {
                       <div className="space-y-2">
                         <div>
                           <p className="text-xs text-muted-foreground">Price</p>
-                          <p className="text-lg font-bold">${coin.price.toFixed(coin.price < 0.01 ? 8 : 2)}</p>
+                          <p className="text-lg font-bold">${coin.price?.toFixed(coin.price < 0.01 ? 8 : 2) || '0.00'}</p>
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">24h Change</p>
                           <p className={`text-sm font-semibold ${coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
+                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h?.toFixed(2) || '0.00'}%
                           </p>
                         </div>
                         <div>
@@ -581,12 +627,12 @@ const Dashboard = () => {
                       <div className="space-y-2">
                         <div>
                           <p className="text-xs text-muted-foreground">Price</p>
-                          <p className="text-lg font-bold">${coin.price.toFixed(coin.price < 0.01 ? 8 : 2)}</p>
+                          <p className="text-lg font-bold">${coin.price?.toFixed(coin.price < 0.01 ? 8 : 2) || '0.00'}</p>
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">24h Change</p>
                           <p className={`text-sm font-semibold ${coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
+                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h?.toFixed(2) || '0.00'}%
                           </p>
                         </div>
                         <div>
@@ -762,9 +808,20 @@ const Dashboard = () => {
                     defaultValue="1"
                   />
                 </div>
+                {/* Show estimated cost */}
+                <div className="bg-muted/50 rounded-lg p-3">
+                  <p className="text-sm text-muted-foreground">Estimated Cost:</p>
+                  <p className="text-lg font-bold" id="estimatedCost">
+                    {selectedCoin.price ? (1 * selectedCoin.price).toFixed(4) : '0.0000'} SOL
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    ≈ ${selectedCoin.price && solPrice ? (1 * selectedCoin.price * solPrice).toFixed(2) : '0.00'} USD
+                  </p>
+                </div>
                 <div className="flex gap-2">
                   <Button 
                     className="flex-1 bg-green-600 hover:bg-green-700"
+                    disabled={isTrading}
                     onClick={() => {
                       const input = document.getElementById('tradeQuantity') as HTMLInputElement;
                       const qty = parseFloat(input.value);
@@ -773,14 +830,13 @@ const Dashboard = () => {
                         return;
                       }
                       handleMemecoinTrade('buy', selectedCoin, qty, selectedCoin.price);
-                      setTradeModal(false);
-                      setSelectedCoin(null);
                     }}
                   >
-                    Buy
+                    {isTrading ? 'Processing...' : 'Buy'}
                   </Button>
                   <Button 
                     className="flex-1 bg-red-600 hover:bg-red-700"
+                    disabled={isTrading}
                     onClick={() => {
                       const input = document.getElementById('tradeQuantity') as HTMLInputElement;
                       const qty = parseFloat(input.value);
@@ -789,11 +845,9 @@ const Dashboard = () => {
                         return;
                       }
                       handleMemecoinTrade('sell', selectedCoin, qty, selectedCoin.price);
-                      setTradeModal(false);
-                      setSelectedCoin(null);
                     }}
                   >
-                    Sell
+                    {isTrading ? 'Processing...' : 'Sell'}
                   </Button>
                 </div>
                 <Button 
