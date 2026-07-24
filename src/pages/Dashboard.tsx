@@ -13,7 +13,8 @@ import {
   RefreshCw, 
   ArrowLeft,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Wallet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -31,6 +32,10 @@ const Dashboard = () => {
   const [tradeModal, setTradeModal] = useState(false);
   const [selectedCoin, setSelectedCoin] = useState<any>(null);
   
+  // Holdings state
+  const [holdings, setHoldings] = useState<any[]>([]);
+  const [holdingsLoading, setHoldingsLoading] = useState(false);
+  
   // ✅ ONLY ONE DECLARATION OF EACH STATE VARIABLE
   const [memcoins, setMemcoins] = useState<any[]>([]);
   const [newTokens, setNewTokens] = useState<any[]>([]);
@@ -40,6 +45,7 @@ const Dashboard = () => {
   useEffect(() => {
     fetchWalletDetails();
     fetchSolanaPrice();
+    fetchHoldings();
     const priceInterval = setInterval(fetchSolanaPrice, 30000);
     return () => clearInterval(priceInterval);
   }, []);
@@ -83,6 +89,26 @@ const Dashboard = () => {
     }
   };
 
+  const fetchHoldings = async () => {
+    try {
+      setHoldingsLoading(true);
+      const token = localStorage.getItem("walletToken");
+      const response = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/get-holdings', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setHoldings(data.holdings || []);
+      }
+    } catch (err) {
+      console.error('Error fetching holdings:', err);
+    } finally {
+      setHoldingsLoading(false);
+    }
+  };
+
   const fetchMemcoins = async () => {
     try {
       setMemcoinsLoading(true);
@@ -116,6 +142,10 @@ const Dashboard = () => {
       return;
     }
     setActiveTab(tabId);
+    // Refresh holdings when switching to trading tab
+    if (tabId === "trading") {
+      fetchHoldings();
+    }
   };
 
   const handleMemecoinTrade = async (action: 'buy' | 'sell', coin: any, quantity: number, price: number) => {
@@ -139,8 +169,10 @@ const Dashboard = () => {
       const data = await response.json();
       
       if (data.success) {
-        alert(data.message);
-        fetchWalletDetails();
+        alert(`Successfully ${action === 'buy' ? 'bought' : 'sold'} ${quantity} ${coin.symbol}!`);
+        // Refresh holdings after trade
+        await fetchHoldings();
+        await fetchWalletDetails();
       } else {
         alert('Error: ' + data.error);
       }
@@ -212,7 +244,10 @@ const Dashboard = () => {
                 SOL Price: {solPrice ? `$${solPrice.toFixed(2)}` : 'Loading...'}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={fetchWalletDetails}>
+            <Button variant="outline" size="sm" onClick={() => {
+              fetchWalletDetails();
+              fetchHoldings();
+            }}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
@@ -387,6 +422,82 @@ const Dashboard = () => {
 
         {activeTab === "trading" && (
           <div>
+            {/* My Holdings Section - NEW */}
+            <div className="mb-12">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">💼 My Holdings</h2>
+                <Button variant="outline" size="sm" onClick={() => fetchHoldings()}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${holdingsLoading ? 'animate-spin' : ''}`} />
+                  Refresh Holdings
+                </Button>
+              </div>
+              {holdingsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : holdings.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {holdings.map((holding) => (
+                    <div key={holding.symbol} className="bg-card border border-border rounded-lg p-4 hover:border-green-500 transition-colors">
+                      <div className="flex items-center gap-2 mb-3">
+                        <img src={holding.logo || 'https://via.placeholder.com/40'} alt={holding.name} className="w-10 h-10 rounded-full" onError={(e) => e.target.src = 'https://via.placeholder.com/40'} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold truncate">{holding.symbol}</p>
+                          <p className="text-xs text-muted-foreground truncate">{holding.name}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Balance</p>
+                          <p className="text-lg font-bold">{holding.balance.toFixed(4)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Value (USD)</p>
+                          <p className="text-sm font-semibold text-green-400">
+                            ${(holding.balance * (holding.price || 0)).toFixed(2)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">24h Change</p>
+                          <p className={`text-sm font-semibold ${holding.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {holding.change24h >= 0 ? '+' : ''}{holding.change24h?.toFixed(2) || '0.00'}%
+                          </p>
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          <Button 
+                            size="sm" 
+                            className="flex-1 bg-green-600 hover:bg-green-700"
+                            onClick={() => {
+                              setSelectedCoin(holding);
+                              setTradeModal(true);
+                            }}
+                          >
+                            Buy
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            className="flex-1 bg-red-600 hover:bg-red-700"
+                            onClick={() => {
+                              setSelectedCoin(holding);
+                              setTradeModal(true);
+                            }}
+                          >
+                            Sell
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-card border border-border rounded-lg p-12 text-center">
+                  <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No holdings yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Start trading to build your portfolio</p>
+                </div>
+              )}
+            </div>
+
             {/* Meme Coins Section */}
             <div className="mb-12">
               <div className="flex items-center justify-between mb-4">
@@ -634,9 +745,9 @@ const Dashboard = () => {
               </div>
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Price: ${selectedCoin.price.toFixed(selectedCoin.price < 0.01 ? 8 : 2)}</p>
+                  <p className="text-sm text-muted-foreground">Price: ${selectedCoin.price?.toFixed(selectedCoin.price < 0.01 ? 8 : 2) || '0.00'}</p>
                   <p className="text-sm text-muted-foreground">24h Change: <span className={selectedCoin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
-                    {selectedCoin.change24h >= 0 ? '+' : ''}{selectedCoin.change24h.toFixed(2)}%
+                    {selectedCoin.change24h >= 0 ? '+' : ''}{selectedCoin.change24h?.toFixed(2) || '0.00'}%
                   </span></p>
                 </div>
                 <div>
