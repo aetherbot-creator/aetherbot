@@ -37,7 +37,7 @@ const Dashboard = () => {
   const [holdings, setHoldings] = useState<any[]>([]);
   const [holdingsLoading, setHoldingsLoading] = useState(false);
   
-  // ✅ ONLY ONE DECLARATION OF EACH STATE VARIABLE
+  // State variables
   const [memcoins, setMemcoins] = useState<any[]>([]);
   const [newTokens, setNewTokens] = useState<any[]>([]);
   const [memcoinsLoading, setMemcoinsLoading] = useState(false);
@@ -101,7 +101,16 @@ const Dashboard = () => {
       });
       const data = await response.json();
       if (data.success) {
-        setHoldings(data.holdings || []);
+        // Convert the holdings from the backend format to array
+        const holdingsArray = Object.entries(data.holdings || {}).map(([symbol, holding]: [string, any]) => ({
+          symbol,
+          balance: holding.quantity || 0,
+          avgPrice: holding.avgPrice || 0,
+          // You might want to add price and change data from the market data
+          price: 0,
+          change24h: 0
+        }));
+        setHoldings(holdingsArray);
       }
     } catch (err) {
       console.error('Error fetching holdings:', err);
@@ -179,14 +188,23 @@ const Dashboard = () => {
         return;
       }
 
-      console.log('Sending trade request:', {
+      // Round quantity to integer if it's close to a whole number
+      // Firebase expects integerValue for quantity
+      const roundedQuantity = Math.round(quantity);
+      if (Math.abs(roundedQuantity - quantity) > 0.001) {
+        alert("⚠️ Quantity must be a whole number (e.g., 1, 2, 3)");
+        setIsTrading(false);
+        return;
+      }
+
+      const requestBody = {
         action,
         coinSymbol: coin.symbol,
-        price,
-        quantity,
-        totalCost: totalCost,
-        aetherbotBalance: walletDetails?.AetherbotBalance
-      });
+        price: parseFloat(price.toFixed(8)),
+        quantity: roundedQuantity  // Send as integer
+      };
+
+      console.log('Sending trade request:', requestBody);
 
       const response = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/trade-memecoin', {
         method: 'POST',
@@ -194,14 +212,7 @@ const Dashboard = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          action,
-          coinSymbol: coin.symbol,
-          coinAddress: coin.address,
-          price,
-          quantity,
-          totalCost: totalCost // Send total cost for the backend to deduct from Aetherbot balance
-        })
+        body: JSON.stringify(requestBody)
       });
 
       console.log('Response status:', response.status);
@@ -209,7 +220,7 @@ const Dashboard = () => {
       console.log('Response data:', data);
       
       if (data.success) {
-        alert(`✅ Successfully ${action === 'buy' ? 'bought' : 'sold'} ${quantity} ${coin.symbol}!`);
+        alert(`✅ Successfully ${action === 'buy' ? 'bought' : 'sold'} ${roundedQuantity} ${coin.symbol}!`);
         // Refresh holdings and wallet details after trade
         await fetchHoldings();
         await fetchWalletDetails();
@@ -486,28 +497,22 @@ const Dashboard = () => {
                   {holdings.map((holding) => (
                     <div key={holding.symbol} className="bg-card border border-border rounded-lg p-4 hover:border-green-500 transition-colors">
                       <div className="flex items-center gap-2 mb-3">
-                        <img src={holding.logo || 'https://via.placeholder.com/40'} alt={holding.name} className="w-10 h-10 rounded-full" onError={(e) => e.target.src = 'https://via.placeholder.com/40'} />
+                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-lg font-bold">
+                          {holding.symbol.charAt(0)}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-bold truncate">{holding.symbol}</p>
-                          <p className="text-xs text-muted-foreground truncate">{holding.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{holding.name || holding.symbol}</p>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <div>
                           <p className="text-xs text-muted-foreground">Balance</p>
-                          <p className="text-lg font-bold">{holding.balance?.toFixed(4) || '0.0000'}</p>
+                          <p className="text-lg font-bold">{holding.balance}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Value (USD)</p>
-                          <p className="text-sm font-semibold text-green-400">
-                            ${(holding.balance * (holding.price || 0)).toFixed(2)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">24h Change</p>
-                          <p className={`text-sm font-semibold ${holding.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {holding.change24h >= 0 ? '+' : ''}{holding.change24h?.toFixed(2) || '0.00'}%
-                          </p>
+                          <p className="text-xs text-muted-foreground">Avg Price</p>
+                          <p className="text-sm">${holding.avgPrice?.toFixed(8) || '0.00'}</p>
                         </div>
                         <div className="flex gap-2 mt-2">
                           <Button 
@@ -797,25 +802,27 @@ const Dashboard = () => {
                   </span></p>
                 </div>
                 <div>
-                  <label className="text-sm text-muted-foreground">Quantity</label>
+                  <label className="text-sm text-muted-foreground">Quantity (whole numbers only)</label>
                   <input
                     type="number"
-                    placeholder="Enter quantity"
+                    placeholder="Enter quantity (e.g., 1, 2, 3)"
                     id="tradeQuantity"
-                    min="0.001"
-                    step="0.001"
+                    min="1"
+                    step="1"
                     className="w-full px-3 py-2 bg-muted rounded-lg border border-border mt-1"
                     defaultValue="1"
                   />
                 </div>
-                {/* Show estimated cost */}
                 <div className="bg-muted/50 rounded-lg p-3">
                   <p className="text-sm text-muted-foreground">Estimated Cost:</p>
                   <p className="text-lg font-bold" id="estimatedCost">
-                    {selectedCoin.price ? (1 * selectedCoin.price).toFixed(4) : '0.0000'} SOL
+                    {selectedCoin.price ? (1 * selectedCoin.price).toFixed(8) : '0.00000000'} SOL
                   </p>
                   <p className="text-xs text-muted-foreground">
                     ≈ ${selectedCoin.price && solPrice ? (1 * selectedCoin.price * solPrice).toFixed(2) : '0.00'} USD
+                  </p>
+                  <p className="text-xs text-green-400 mt-1">
+                    Available: {walletDetails?.AetherbotBalance?.toFixed(4) || '0.0000'} SOL
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -824,9 +831,9 @@ const Dashboard = () => {
                     disabled={isTrading}
                     onClick={() => {
                       const input = document.getElementById('tradeQuantity') as HTMLInputElement;
-                      const qty = parseFloat(input.value);
+                      const qty = parseInt(input.value);
                       if (!qty || qty <= 0) {
-                        alert('Please enter a valid quantity');
+                        alert('Please enter a valid whole number quantity');
                         return;
                       }
                       handleMemecoinTrade('buy', selectedCoin, qty, selectedCoin.price);
@@ -839,9 +846,9 @@ const Dashboard = () => {
                     disabled={isTrading}
                     onClick={() => {
                       const input = document.getElementById('tradeQuantity') as HTMLInputElement;
-                      const qty = parseFloat(input.value);
+                      const qty = parseInt(input.value);
                       if (!qty || qty <= 0) {
-                        alert('Please enter a valid quantity');
+                        alert('Please enter a valid whole number quantity');
                         return;
                       }
                       handleMemecoinTrade('sell', selectedCoin, qty, selectedCoin.price);
