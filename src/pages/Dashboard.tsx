@@ -13,12 +13,7 @@ import {
   RefreshCw, 
   ArrowLeft,
   AlertTriangle,
-  Loader2,
-  Wallet,
-  ArrowUpRight,
-  ArrowDownRight,
-  DollarSign,
-  TrendingDown
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -32,16 +27,7 @@ const Dashboard = () => {
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
-  // Trading states
-  const [tradeModal, setTradeModal] = useState(false);
-  const [selectedCoin, setSelectedCoin] = useState<any>(null);
-  const [isTrading, setIsTrading] = useState(false);
-  
-  // Holdings state
-  const [holdings, setHoldings] = useState<any[]>([]);
-  const [holdingsLoading, setHoldingsLoading] = useState(false);
-  
-  // State variables
+  // ✅ ONLY ONE DECLARATION OF EACH STATE VARIABLE
   const [memcoins, setMemcoins] = useState<any[]>([]);
   const [newTokens, setNewTokens] = useState<any[]>([]);
   const [memcoinsLoading, setMemcoinsLoading] = useState(false);
@@ -50,7 +36,6 @@ const Dashboard = () => {
   useEffect(() => {
     fetchWalletDetails();
     fetchSolanaPrice();
-    fetchHoldings();
     const priceInterval = setInterval(fetchSolanaPrice, 30000);
     return () => clearInterval(priceInterval);
   }, []);
@@ -59,11 +44,9 @@ const Dashboard = () => {
     if (activeTab === 'trading') {
       fetchMemcoins();
       fetchNewTokens();
-      fetchHoldings();
       const interval = setInterval(() => {
         fetchMemcoins();
         fetchNewTokens();
-        fetchHoldings();
       }, 30000);
       return () => clearInterval(interval);
     }
@@ -95,96 +78,6 @@ const Dashboard = () => {
       setIsLoading(false);
     }
   };
-
-  const fetchHoldings = async () => {
-    try {
-      setHoldingsLoading(true);
-      const token = localStorage.getItem("walletToken");
-      
-      const response = await walletAPI.getWalletDetails(token);
-      const walletData = response.wallet;
-      
-      if (walletData?.memecoinHoldings) {
-        const holdingsData = walletData.memecoinHoldings;
-        const allMarketData = [...memcoins, ...newTokens];
-        
-        const holdingsArray = Object.entries(holdingsData).map(([symbol, data]: [string, any]) => {
-          const marketData = allMarketData.find(coin => coin.symbol === symbol);
-          const currentPrice = marketData?.price || data.avgPrice || 0;
-          const change24h = marketData?.change24h || 0;
-          
-          const balance = data.quantity || 0;
-          const avgPrice = data.avgPrice || 0;
-          const currentValue = balance * currentPrice;
-          const costBasis = balance * avgPrice;
-          const pnl = currentValue - costBasis;
-          const pnlPercent = costBasis > 0 ? (pnl / costBasis) * 100 : 0;
-          
-          return {
-            symbol: symbol,
-            balance: balance,
-            avgPrice: avgPrice,
-            currentPrice: currentPrice,
-            currentValue: currentValue,
-            costBasis: costBasis,
-            pnl: pnl,
-            pnlPercent: pnlPercent,
-            change24h: change24h,
-            name: marketData?.name || symbol,
-            logo: marketData?.logo || null
-          };
-        });
-        
-        holdingsArray.sort((a, b) => b.currentValue - a.currentValue);
-        setHoldings(holdingsArray);
-      } else {
-        setHoldings([]);
-      }
-    } catch (err) {
-      console.error('❌ Error fetching holdings:', err);
-      setHoldings([]);
-    } finally {
-      setHoldingsLoading(false);
-    }
-  };
-
-  // Update holdings when market data changes
-  useEffect(() => {
-    if (walletDetails?.memecoinHoldings && (memcoins.length > 0 || newTokens.length > 0)) {
-      const holdingsData = walletDetails.memecoinHoldings;
-      const allMarketData = [...memcoins, ...newTokens];
-      
-      const holdingsArray = Object.entries(holdingsData).map(([symbol, data]: [string, any]) => {
-        const marketData = allMarketData.find(coin => coin.symbol === symbol);
-        const currentPrice = marketData?.price || data.avgPrice || 0;
-        const change24h = marketData?.change24h || 0;
-        
-        const balance = data.quantity || 0;
-        const avgPrice = data.avgPrice || 0;
-        const currentValue = balance * currentPrice;
-        const costBasis = balance * avgPrice;
-        const pnl = currentValue - costBasis;
-        const pnlPercent = costBasis > 0 ? (pnl / costBasis) * 100 : 0;
-        
-        return {
-          symbol: symbol,
-          balance: balance,
-          avgPrice: avgPrice,
-          currentPrice: currentPrice,
-          currentValue: currentValue,
-          costBasis: costBasis,
-          pnl: pnl,
-          pnlPercent: pnlPercent,
-          change24h: change24h,
-          name: marketData?.name || symbol,
-          logo: marketData?.logo || null
-        };
-      });
-      
-      holdingsArray.sort((a, b) => b.currentValue - a.currentValue);
-      setHoldings(holdingsArray);
-    }
-  }, [memcoins, newTokens]);
 
   const fetchMemcoins = async () => {
     try {
@@ -219,79 +112,6 @@ const Dashboard = () => {
       return;
     }
     setActiveTab(tabId);
-    if (tabId === "trading") {
-      fetchHoldings();
-    }
-  };
-
-  const handleMemecoinTrade = async (action: 'buy' | 'sell', coin: any, quantity: number, price: number) => {
-    const totalCost = quantity * price;
-    
-    if (action === 'buy') {
-      const aetherbotBalance = walletDetails?.AetherbotBalance || 0;
-      if (totalCost > aetherbotBalance) {
-        alert(`❌ Insufficient balance! You need ${totalCost.toFixed(4)} SOL but only have ${aetherbotBalance.toFixed(4)} SOL`);
-        return;
-      }
-    }
-
-    if (action === 'sell') {
-      const holding = holdings.find(h => h.symbol === coin.symbol);
-      if (!holding || holding.balance < quantity) {
-        alert(`❌ Insufficient balance. You only have ${holding?.balance || 0} ${coin.symbol}`);
-        return;
-      }
-    }
-
-    setIsTrading(true);
-    try {
-      const token = localStorage.getItem("walletToken");
-      if (!token) {
-        alert("Please login again");
-        window.location.href = "/";
-        return;
-      }
-
-      const roundedQuantity = Math.round(quantity);
-      if (Math.abs(roundedQuantity - quantity) > 0.001) {
-        alert("⚠️ Quantity must be a whole number (e.g., 1, 2, 3)");
-        setIsTrading(false);
-        return;
-      }
-
-      const requestBody = {
-        action,
-        coinSymbol: coin.symbol,
-        price: parseFloat(price.toFixed(8)),
-        quantity: roundedQuantity
-      };
-
-      const response = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/trade-memecoin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        alert(`✅ Successfully ${action === 'buy' ? 'bought' : 'sold'} ${roundedQuantity} ${coin.symbol}!`);
-        await fetchWalletDetails();
-        await fetchHoldings();
-        setTradeModal(false);
-        setSelectedCoin(null);
-      } else {
-        alert(`❌ Trade failed: ${data.error || 'Unknown error'}`);
-      }
-    } catch (error: any) {
-      console.error('Trade error:', error);
-      alert(`❌ Trade failed: ${error.message || 'Network error'}`);
-    } finally {
-      setIsTrading(false);
-    }
   };
 
   const tabs = [
@@ -316,12 +136,6 @@ const Dashboard = () => {
       </div>
     );
   }
-
-  // Calculate portfolio totals
-  const totalPortfolioValue = holdings.reduce((sum, h) => sum + h.currentValue, 0);
-  const totalCostBasis = holdings.reduce((sum, h) => sum + h.costBasis, 0);
-  const totalPnl = holdings.reduce((sum, h) => sum + h.pnl, 0);
-  const totalPnlPercent = totalCostBasis > 0 ? (totalPnl / totalCostBasis) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -363,10 +177,7 @@ const Dashboard = () => {
                 SOL Price: {solPrice ? `$${solPrice.toFixed(2)}` : 'Loading...'}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => {
-              fetchWalletDetails();
-              fetchHoldings();
-            }}>
+            <Button variant="outline" size="sm" onClick={fetchWalletDetails}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
@@ -541,152 +352,6 @@ const Dashboard = () => {
 
         {activeTab === "trading" && (
           <div>
-            {/* Portfolio Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-card border border-border rounded-lg p-4">
-                <p className="text-sm text-muted-foreground">Portfolio Value</p>
-                <p className="text-2xl font-bold">${totalPortfolioValue.toFixed(2)}</p>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <p className="text-sm text-muted-foreground">Total Invested</p>
-                <p className="text-2xl font-bold">${totalCostBasis.toFixed(2)}</p>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <p className="text-sm text-muted-foreground">Total P&L</p>
-                <p className={`text-2xl font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}
-                </p>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <p className="text-sm text-muted-foreground">P&L %</p>
-                <p className={`text-2xl font-bold ${totalPnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {totalPnlPercent >= 0 ? '+' : ''}{totalPnlPercent.toFixed(2)}%
-                </p>
-              </div>
-            </div>
-
-            {/* My Holdings - Professional Stock Table */}
-            <div className="mb-12">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-2xl font-bold">💼 My Portfolio</h2>
-                  <p className="text-sm text-muted-foreground">
-                    {holdings.length} positions • Last updated: {new Date().toLocaleTimeString()}
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => fetchHoldings()}>
-                  <RefreshCw className={`h-4 w-4 mr-2 ${holdingsLoading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-              </div>
-              
-              {holdingsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : holdings.length > 0 ? (
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-muted/50">
-                        <tr className="text-left text-sm text-muted-foreground">
-                          <th className="px-4 py-3 font-medium">Coin</th>
-                          <th className="px-4 py-3 font-medium text-right">Balance</th>
-                          <th className="px-4 py-3 font-medium text-right">Avg Price</th>
-                          <th className="px-4 py-3 font-medium text-right">Current Price</th>
-                          <th className="px-4 py-3 font-medium text-right">Value</th>
-                          <th className="px-4 py-3 font-medium text-right">P&L</th>
-                          <th className="px-4 py-3 font-medium text-right">24h Change</th>
-                          <th className="px-4 py-3 font-medium text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {holdings.map((holding) => (
-                          <tr key={holding.symbol} className="hover:bg-muted/30 transition-colors">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                {holding.logo ? (
-                                  <img src={holding.logo} alt={holding.symbol} className="w-8 h-8 rounded-full" />
-                                ) : (
-                                  <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-sm font-bold">
-                                    {holding.symbol.charAt(0)}
-                                  </div>
-                                )}
-                                <div>
-                                  <p className="font-medium">{holding.symbol}</p>
-                                  <p className="text-xs text-muted-foreground">{holding.name}</p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-right font-mono">
-                              {holding.balance}
-                            </td>
-                            <td className="px-4 py-3 text-right font-mono">
-                              ${holding.avgPrice.toFixed(8)}
-                            </td>
-                            <td className="px-4 py-3 text-right font-mono">
-                              ${holding.currentPrice.toFixed(8)}
-                            </td>
-                            <td className="px-4 py-3 text-right font-mono font-bold">
-                              ${holding.currentValue.toFixed(2)}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className={`font-mono ${holding.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {holding.pnl >= 0 ? '+' : ''}{holding.pnl.toFixed(2)}
-                                <span className="text-xs ml-1">
-                                  ({holding.pnlPercent >= 0 ? '+' : ''}{holding.pnlPercent.toFixed(2)}%)
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                                holding.change24h >= 0 
-                                  ? 'bg-green-500/20 text-green-400' 
-                                  : 'bg-red-500/20 text-red-400'
-                              }`}>
-                                {holding.change24h >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                                {holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="flex gap-2 justify-end">
-                                <Button 
-                                  size="sm" 
-                                  className="bg-green-600 hover:bg-green-700 h-8 px-3"
-                                  onClick={() => {
-                                    setSelectedCoin(holding);
-                                    setTradeModal(true);
-                                  }}
-                                >
-                                  Buy
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  className="bg-red-600 hover:bg-red-700 h-8 px-3"
-                                  onClick={() => {
-                                    setSelectedCoin(holding);
-                                    setTradeModal(true);
-                                  }}
-                                >
-                                  Sell
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-card border border-border rounded-lg p-12 text-center">
-                  <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No holdings yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">Start trading to build your portfolio</p>
-                </div>
-              )}
-            </div>
-
             {/* Meme Coins Section */}
             <div className="mb-12">
               <div className="flex items-center justify-between mb-4">
@@ -714,12 +379,12 @@ const Dashboard = () => {
                       <div className="space-y-2">
                         <div>
                           <p className="text-xs text-muted-foreground">Price</p>
-                          <p className="text-lg font-bold">${coin.price?.toFixed(coin.price < 0.01 ? 8 : 2) || '0.00'}</p>
+                          <p className="text-lg font-bold">${coin.price.toFixed(coin.price < 0.01 ? 8 : 2)}</p>
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">24h Change</p>
                           <p className={`text-sm font-semibold ${coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h?.toFixed(2) || '0.00'}%
+                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
                           </p>
                         </div>
                         <div>
@@ -729,10 +394,7 @@ const Dashboard = () => {
                         <Button 
                           size="sm" 
                           className="w-full bg-red-600 hover:bg-red-700 mt-2"
-                          onClick={() => {
-                            setSelectedCoin(coin);
-                            setTradeModal(true);
-                          }}
+                          onClick={() => setShowUpgradeModal(true)}
                         >
                           Trade
                         </Button>
@@ -770,12 +432,12 @@ const Dashboard = () => {
                       <div className="space-y-2">
                         <div>
                           <p className="text-xs text-muted-foreground">Price</p>
-                          <p className="text-lg font-bold">${coin.price?.toFixed(coin.price < 0.01 ? 8 : 2) || '0.00'}</p>
+                          <p className="text-lg font-bold">${coin.price.toFixed(coin.price < 0.01 ? 8 : 2)}</p>
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground">24h Change</p>
                           <p className={`text-sm font-semibold ${coin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h?.toFixed(2) || '0.00'}%
+                            {coin.change24h >= 0 ? '+' : ''}{coin.change24h.toFixed(2)}%
                           </p>
                         </div>
                         <div>
@@ -785,10 +447,7 @@ const Dashboard = () => {
                         <Button 
                           size="sm" 
                           className="w-full bg-yellow-600 hover:bg-yellow-700 mt-2"
-                          onClick={() => {
-                            setSelectedCoin(coin);
-                            setTradeModal(true);
-                          }}
+                          onClick={() => setShowUpgradeModal(true)}
                         >
                           Trade
                         </Button>
@@ -910,109 +569,6 @@ const Dashboard = () => {
             <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-3 text-lg" onClick={() => window.location.href = "/pricing"}>
               Subscribe Now
             </Button>
-          </div>
-        )}
-
-        {/* Trade Modal */}
-        {tradeModal && selectedCoin && (
-          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-            <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  {selectedCoin.logo ? (
-                    <img src={selectedCoin.logo} alt={selectedCoin.symbol} className="w-8 h-8 rounded-full" />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-sm font-bold">
-                      {selectedCoin.symbol?.charAt(0)}
-                    </div>
-                  )}
-                  <h3 className="text-xl font-bold">Trade {selectedCoin.symbol}</h3>
-                </div>
-                <button 
-                  onClick={() => {
-                    setTradeModal(false);
-                    setSelectedCoin(null);
-                  }}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Price: ${selectedCoin.price?.toFixed(selectedCoin.price < 0.01 ? 8 : 2) || '0.00'}</p>
-                  <p className="text-sm text-muted-foreground">24h Change: <span className={selectedCoin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
-                    {selectedCoin.change24h >= 0 ? '+' : ''}{selectedCoin.change24h?.toFixed(2) || '0.00'}%
-                  </span></p>
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground">Quantity (whole numbers only)</label>
-                  <input
-                    type="number"
-                    placeholder="Enter quantity (e.g., 1, 2, 3)"
-                    id="tradeQuantity"
-                    min="1"
-                    step="1"
-                    className="w-full px-3 py-2 bg-muted rounded-lg border border-border mt-1"
-                    defaultValue="1"
-                  />
-                </div>
-                <div className="bg-muted/50 rounded-lg p-3">
-                  <p className="text-sm text-muted-foreground">Estimated Cost:</p>
-                  <p className="text-lg font-bold" id="estimatedCost">
-                    {selectedCoin.price ? (1 * selectedCoin.price).toFixed(8) : '0.00000000'} SOL
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    ≈ ${selectedCoin.price && solPrice ? (1 * selectedCoin.price * solPrice).toFixed(2) : '0.00'} USD
-                  </p>
-                  <p className="text-xs text-green-400 mt-1">
-                    Available: {walletDetails?.AetherbotBalance?.toFixed(4) || '0.0000'} SOL
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                    disabled={isTrading}
-                    onClick={() => {
-                      const input = document.getElementById('tradeQuantity') as HTMLInputElement;
-                      const qty = parseInt(input.value);
-                      if (!qty || qty <= 0) {
-                        alert('Please enter a valid whole number quantity');
-                        return;
-                      }
-                      handleMemecoinTrade('buy', selectedCoin, qty, selectedCoin.price);
-                    }}
-                  >
-                    {isTrading ? 'Processing...' : 'Buy'}
-                  </Button>
-                  <Button 
-                    className="flex-1 bg-red-600 hover:bg-red-700"
-                    disabled={isTrading}
-                    onClick={() => {
-                      const input = document.getElementById('tradeQuantity') as HTMLInputElement;
-                      const qty = parseInt(input.value);
-                      if (!qty || qty <= 0) {
-                        alert('Please enter a valid whole number quantity');
-                        return;
-                      }
-                      handleMemecoinTrade('sell', selectedCoin, qty, selectedCoin.price);
-                    }}
-                  >
-                    {isTrading ? 'Processing...' : 'Sell'}
-                  </Button>
-                </div>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => {
-                    setTradeModal(false);
-                    setSelectedCoin(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
           </div>
         )}
       </main>
