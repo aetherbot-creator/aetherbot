@@ -27,6 +27,10 @@ const Dashboard = () => {
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
+  // Trading states
+  const [tradeModal, setTradeModal] = useState(false);
+  const [selectedCoin, setSelectedCoin] = useState<any>(null);
+  
   // ✅ ONLY ONE DECLARATION OF EACH STATE VARIABLE
   const [memcoins, setMemcoins] = useState<any[]>([]);
   const [newTokens, setNewTokens] = useState<any[]>([]);
@@ -112,6 +116,37 @@ const Dashboard = () => {
       return;
     }
     setActiveTab(tabId);
+  };
+
+  const handleMemecoinTrade = async (action: 'buy' | 'sell', coin: any, quantity: number, price: number) => {
+    try {
+      const token = localStorage.getItem('walletToken');
+      
+      const response = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/trade-memecoin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action,
+          coinSymbol: coin.symbol,
+          price,
+          quantity
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(data.message);
+        fetchWalletDetails();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      alert('Trade failed');
+    }
   };
 
   const tabs = [
@@ -394,7 +429,10 @@ const Dashboard = () => {
                         <Button 
                           size="sm" 
                           className="w-full bg-red-600 hover:bg-red-700 mt-2"
-                          onClick={() => setShowUpgradeModal(true)}
+                          onClick={() => {
+                            setSelectedCoin(coin);
+                            setTradeModal(true);
+                          }}
                         >
                           Trade
                         </Button>
@@ -447,7 +485,10 @@ const Dashboard = () => {
                         <Button 
                           size="sm" 
                           className="w-full bg-yellow-600 hover:bg-yellow-700 mt-2"
-                          onClick={() => setShowUpgradeModal(true)}
+                          onClick={() => {
+                            setSelectedCoin(coin);
+                            setTradeModal(true);
+                          }}
                         >
                           Trade
                         </Button>
@@ -569,6 +610,93 @@ const Dashboard = () => {
             <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-3 text-lg" onClick={() => window.location.href = "/pricing"}>
               Subscribe Now
             </Button>
+          </div>
+        )}
+
+        {/* Trade Modal */}
+        {tradeModal && selectedCoin && (
+          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+            <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <img src={selectedCoin.logo} alt={selectedCoin.name} className="w-8 h-8 rounded-full" onError={(e) => e.target.src = 'https://via.placeholder.com/40'} />
+                  <h3 className="text-xl font-bold">Trade {selectedCoin.symbol}</h3>
+                </div>
+                <button 
+                  onClick={() => {
+                    setTradeModal(false);
+                    setSelectedCoin(null);
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Price: ${selectedCoin.price.toFixed(selectedCoin.price < 0.01 ? 8 : 2)}</p>
+                  <p className="text-sm text-muted-foreground">24h Change: <span className={selectedCoin.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    {selectedCoin.change24h >= 0 ? '+' : ''}{selectedCoin.change24h.toFixed(2)}%
+                  </span></p>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Quantity</label>
+                  <input
+                    type="number"
+                    placeholder="Enter quantity"
+                    id="tradeQuantity"
+                    min="0.001"
+                    step="0.001"
+                    className="w-full px-3 py-2 bg-muted rounded-lg border border-border mt-1"
+                    defaultValue="1"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={() => {
+                      const input = document.getElementById('tradeQuantity') as HTMLInputElement;
+                      const qty = parseFloat(input.value);
+                      if (!qty || qty <= 0) {
+                        alert('Please enter a valid quantity');
+                        return;
+                      }
+                      handleMemecoinTrade('buy', selectedCoin, qty, selectedCoin.price);
+                      setTradeModal(false);
+                      setSelectedCoin(null);
+                    }}
+                  >
+                    Buy
+                  </Button>
+                  <Button 
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                    onClick={() => {
+                      const input = document.getElementById('tradeQuantity') as HTMLInputElement;
+                      const qty = parseFloat(input.value);
+                      if (!qty || qty <= 0) {
+                        alert('Please enter a valid quantity');
+                        return;
+                      }
+                      handleMemecoinTrade('sell', selectedCoin, qty, selectedCoin.price);
+                      setTradeModal(false);
+                      setSelectedCoin(null);
+                    }}
+                  >
+                    Sell
+                  </Button>
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => {
+                    setTradeModal(false);
+                    setSelectedCoin(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </main>
