@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,32 @@ const Pricing = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedTier, setSelectedTier] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  const [solPrice, setSolPrice] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchSolPrice = async () => {
+      try {
+        const res = await fetch(
+          "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd"
+        );
+        const data = await res.json();
+        setSolPrice(data.solana.usd);
+      } catch (err) {
+        console.error("Failed to fetch SOL price:", err);
+      }
+    };
+
+    fetchSolPrice();
+    // Refresh every 60 seconds so the price doesn't go stale
+    const interval = setInterval(fetchSolPrice, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const tiers = [
     {
       name: "Gold",
       emoji: "🥇",
       sol: 2,
-      price: 199,
       color: "from-yellow-600/20 to-yellow-500/5",
       border: "border-yellow-600/40",
       badge: "bg-yellow-500/20 text-yellow-400",
@@ -33,7 +52,6 @@ const Pricing = () => {
       name: "Diamond",
       emoji: "💎",
       sol: 3.5,
-      price: 349,
       color: "from-blue-600/20 to-blue-500/5",
       border: "border-blue-500/40",
       badge: "bg-blue-500/20 text-blue-300",
@@ -52,7 +70,6 @@ const Pricing = () => {
       name: "VIP",
       emoji: "👑",
       sol: 5,
-      price: 499,
       color: "from-purple-600/20 to-purple-500/5",
       border: "border-purple-500/40",
       badge: "bg-purple-500/20 text-purple-300",
@@ -123,7 +140,9 @@ const Pricing = () => {
                 </span>
                 <div className="mt-4">
                   <div className="mb-2">
-                    <span className="text-4xl font-bold">${tier.price}</span>
+                    <span className="text-4xl font-bold">
+                      {solPrice ? `$${(tier.sol * solPrice).toFixed(2)}` : "..."}
+                    </span>
                     <span className="text-muted-foreground">/month</span>
                   </div>
                   <div className="text-sm text-green-400 font-semibold">
@@ -200,7 +219,9 @@ const Pricing = () => {
             <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 mb-6">
               <p className="text-sm text-muted-foreground mb-1">Amount to send</p>
               <p className="text-3xl font-bold text-green-400">{selectedTier.sol} SOL</p>
-              <p className="text-xs text-muted-foreground mt-1">≈ ${selectedTier.price}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {solPrice ? `≈ $${(selectedTier.sol * solPrice).toFixed(2)}` : "Fetching price..."}
+              </p>
             </div>
 
             {/* Duration */}
@@ -223,23 +244,6 @@ const Pricing = () => {
 
             {/* Buttons */}
             <div className="space-y-3">
-              <Button 
-                className="w-full bg-green-600 hover:bg-green-700 font-bold py-6"
-                onClick={() => {
-                  window.open('https://phantom.app', '_blank');
-                }}
-              >
-                🔗 Open Phantom Wallet
-              </Button>
-              <Button 
-                variant="outline"
-                className="w-full font-bold py-6"
-                onClick={() => {
-                  window.location.href = "/support";
-                }}
-              >
-                💬 Contact Support
-              </Button>
               <Button 
                 variant="ghost"
                 className="w-full font-bold py-6"
