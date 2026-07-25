@@ -9,9 +9,7 @@ import {
   Bot, 
   Bell, 
   User, 
-  Eye, 
   RefreshCw, 
-  ArrowLeft,
   AlertTriangle,
   Loader2,
   Wallet,
@@ -29,7 +27,6 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Trading states
   const [tradeModal, setTradeModal] = useState(false);
@@ -54,6 +51,7 @@ const Dashboard = () => {
   const [memcoinsLoading, setMemcoinsLoading] = useState(false);
   const [newTokensLoading, setNewTokensLoading] = useState(false);
 
+  // Initial load
   useEffect(() => {
     fetchWalletDetails();
     fetchSolanaPrice();
@@ -62,6 +60,7 @@ const Dashboard = () => {
     return () => clearInterval(priceInterval);
   }, []);
 
+  // Load meme coins and new tokens when trading tab is active
   useEffect(() => {
     if (activeTab === 'trading') {
       fetchMemcoins();
@@ -159,7 +158,20 @@ const Dashboard = () => {
       
       if (walletData?.memecoinHoldings) {
         const holdingsData = walletData.memecoinHoldings;
-        const allMarketData = [...memcoins, ...newTokens];
+        
+        // Fetch fresh market data independently
+        let allMarketData: any[] = [];
+        try {
+          const memcoinsRes = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/get-memcoins');
+          const newTokensRes = await fetch('https://aetherbotbackend.netlify.app/.netlify/functions/get-new-tokens');
+          
+          const memcoinsData = await memcoinsRes.json();
+          const newTokensData = await newTokensRes.json();
+          
+          allMarketData = [...(memcoinsData.data || []), ...(newTokensData.data || [])];
+        } catch (err) {
+          console.error('Error fetching market data for holdings:', err);
+        }
         
         const holdingsArray = Object.entries(holdingsData).map(([symbol, data]: [string, any]) => {
           const marketData = allMarketData.find(coin => coin.symbol === symbol);
@@ -206,7 +218,6 @@ const Dashboard = () => {
     setTradeModal(true);
     setTradeQuantity('1');
     
-    // Generate 24-hour price data
     const mockData = Array.from({ length: 24 }, (_, i) => ({
       time: `${i}:00`,
       price: coin.price * (0.95 + Math.random() * 0.1)
@@ -284,9 +295,7 @@ const Dashboard = () => {
 
   const handleTabClick = (tabId: string) => {
     if (tabId === "history" || tabId === "bots" || tabId === "alerts") {
-      setShowUpgradeModal(true);
-      setActiveTab(tabId);
-      return;
+      alert("This feature requires a premium subscription. Visit the pricing page to upgrade.");
     }
     setActiveTab(tabId);
   };
@@ -357,7 +366,7 @@ const Dashboard = () => {
         {/* Welcome Message */}
         <div className="mb-6">
           <p className="text-muted-foreground">
-            Welcome back, {walletDetails?.walletType || "Trader"} • {walletDetails?.walletAddress}
+            Welcome back, {walletDetails?.walletType || "Trader"} • {walletDetails?.walletAddress?.substring(0, 8)}...
           </p>
         </div>
 
@@ -367,23 +376,21 @@ const Dashboard = () => {
             <AlertTriangle className="h-4 w-4 text-red-400" />
             <AlertDescription className="text-red-400">
               <strong>Insufficient Balance Warning</strong>
-              <p className="mt-1">
-                Your current balance is below the minimum required to trade effectively.
-              </p>
+              <p className="mt-1">Your balance is below $300. Consider depositing more SOL to trade effectively.</p>
             </AlertDescription>
           </Alert>
         )}
 
         {/* Tabs */}
         <div className="border-b border-border mb-6">
-          <div className="flex gap-6">
+          <div className="flex gap-6 overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => handleTabClick(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                     activeTab === tab.id
                       ? "border-primary text-primary"
                       : "border-transparent text-muted-foreground hover:text-foreground"
@@ -396,155 +403,166 @@ const Dashboard = () => {
             })}
           </div>
         </div>
-        {/* Overview Tab */}
-{activeTab === "overview" && (
-  <div>
-    {/* Main Stats */}
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div className="bg-card border border-border rounded-lg p-6">
-        <p className="text-sm text-muted-foreground mb-2">Aetherbot Balance</p>
-        <p className="text-3xl font-bold text-green-400">{walletDetails?.AetherbotBalance?.toFixed(4) || "0"} SOL</p>
-        {solPrice && (
-          <p className="text-xs text-muted-foreground mt-2">${(solPrice * (walletDetails?.AetherbotBalance || 0)).toFixed(2)} USD</p>
+
+        {/* OVERVIEW TAB */}
+        {activeTab === "overview" && (
+          <div>
+            {/* Main Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-card border border-border rounded-lg p-6">
+                <p className="text-sm text-muted-foreground mb-2">Aetherbot Balance</p>
+                <p className="text-3xl font-bold text-green-400">{walletDetails?.AetherbotBalance?.toFixed(4) || "0"} SOL</p>
+                {solPrice && (
+                  <p className="text-xs text-muted-foreground mt-2">${(solPrice * (walletDetails?.AetherbotBalance || 0)).toFixed(2)} USD</p>
+                )}
+              </div>
+              
+              <div className="bg-card border border-border rounded-lg p-6">
+                <p className="text-sm text-muted-foreground mb-2">Portfolio Value</p>
+                <p className="text-3xl font-bold text-blue-400">${totalPortfolioValue.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-2">{holdings.length} positions</p>
+              </div>
+              
+              <div className="bg-card border border-border rounded-lg p-6">
+                <p className="text-sm text-muted-foreground mb-2">Total P&L</p>
+                <p className={`text-3xl font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}
+                </p>
+                <p className={`text-xs mt-2 ${totalPnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>{totalPnlPercent.toFixed(2)}%</p>
+              </div>
+              
+              <div className="bg-card border border-border rounded-lg p-6">
+                <p className="text-sm text-muted-foreground mb-2">Total Invested</p>
+                <p className="text-3xl font-bold text-purple-400">${totalCostBasis.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground mt-2">In holdings</p>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-card border border-border rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">🚀 Quick Actions</h3>
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    onClick={() => handleTabClick("trading")}
+                  >
+                    📈 Start Trading
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setWithdrawDialogOpen(true)}
+                  >
+                    💰 Withdraw Funds
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleTabClick("account")}
+                  >
+                    👤 Account Settings
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-card border border-border rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">📊 Account Info</h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Wallet Type</p>
+                    <p className="text-sm font-medium capitalize">{walletDetails?.walletType || "N/A"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Member Since</p>
+                    <p className="text-sm font-medium">
+                      {walletDetails?.createdAt 
+                        ? new Date(walletDetails.createdAt).toLocaleDateString()
+                        : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Trades</p>
+                    <p className="text-sm font-medium">{walletDetails?.totalTrade || 0}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Holdings Preview */}
+            <div>
+              <h3 className="text-2xl font-bold mb-4">💼 Holdings Summary</h3>
+              {holdingsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : holdings.length > 0 ? (
+                <div className="bg-card border border-border rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50">
+                        <tr className="text-left text-sm text-muted-foreground">
+                          <th className="px-4 py-3 font-medium">Coin</th>
+                          <th className="px-4 py-3 font-medium text-right">Balance</th>
+                          <th className="px-4 py-3 font-medium text-right">Value</th>
+                          <th className="px-4 py-3 font-medium text-right">P&L</th>
+                          <th className="px-4 py-3 font-medium text-right">24h</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {holdings.slice(0, 5).map((holding) => (
+                          <tr key={holding.symbol} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                {holding.logo ? (
+                                  <img src={holding.logo} alt={holding.symbol} className="w-6 h-6 rounded-full" onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/40'} />
+                                ) : (
+                                  <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center text-xs font-bold">
+                                    {holding.symbol.charAt(0)}
+                                  </div>
+                                )}
+                                <p className="font-medium text-sm">{holding.symbol}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm font-mono">
+                              {holding.balance}
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm font-bold">
+                              ${holding.currentValue.toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm">
+                              <span className={holding.pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                {holding.pnl >= 0 ? '+' : ''}{holding.pnl.toFixed(2)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm">
+                              <span className={holding.change24h >= 0 ? 'text-green-400' : 'text-red-400'}>
+                                {holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-card border border-border rounded-lg p-12 text-center">
+                  <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No holdings yet</p>
+                  <Button 
+                    className="mt-4 bg-blue-600 hover:bg-blue-700"
+                    onClick={() => handleTabClick("trading")}
+                  >
+                    Start Trading
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
         )}
-      </div>
-      
-      <div className="bg-card border border-border rounded-lg p-6">
-        <p className="text-sm text-muted-foreground mb-2">Portfolio Value</p>
-        <p className="text-3xl font-bold text-blue-400">${totalPortfolioValue.toFixed(2)}</p>
-        <p className="text-xs text-muted-foreground mt-2">{holdings.length} positions</p>
-      </div>
-      
-      <div className="bg-card border border-border rounded-lg p-6">
-        <p className="text-sm text-muted-foreground mb-2">Total P&L</p>
-        <p className={`text-3xl font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-          {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)}
-        </p>
-        <p className="text-xs text-muted-foreground mt-2">{totalPnlPercent.toFixed(2)}%</p>
-      </div>
-      
-      <div className="bg-card border border-border rounded-lg p-6">
-        <p className="text-sm text-muted-foreground mb-2">Total Invested</p>
-        <p className="text-3xl font-bold text-purple-400">${totalCostBasis.toFixed(2)}</p>
-        <p className="text-xs text-muted-foreground mt-2">In holdings</p>
-      </div>
-    </div>
 
-    {/* Quick Actions */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      <div className="bg-card border border-border rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">🚀 Quick Actions</h3>
-        <div className="flex flex-col gap-2">
-          <Button 
-            className="w-full bg-blue-600 hover:bg-blue-700"
-            onClick={() => handleTabClick("trading")}
-          >
-            📈 Start Trading
-          </Button>
-          <Button 
-            variant="outline"
-            className="w-full"
-            onClick={() => setWithdrawDialogOpen(true)}
-          >
-            💰 Withdraw Funds
-          </Button>
-          <Button 
-            variant="outline"
-            className="w-full"
-            onClick={() => handleTabClick("account")}
-          >
-            👤 Account Settings
-          </Button>
-        </div>
-      </div>
-
-      <div className="bg-card border border-border rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">📊 Account Info</h3>
-        <div className="space-y-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Wallet Type</p>
-            <p className="text-sm font-medium capitalize">{walletDetails?.walletType || "N/A"}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Member Since</p>
-            <p className="text-sm font-medium">
-              {walletDetails?.createdAt 
-                ? new Date(walletDetails.createdAt).toLocaleDateString()
-                : "N/A"}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Login Count</p>
-            <p className="text-sm font-medium">{walletDetails?.loginCount || 0}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* Holdings Preview */}
-    <div>
-      <h3 className="text-2xl font-bold mb-4">💼 Holdings Summary</h3>
-      {holdings.length > 0 ? (
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr className="text-left text-sm text-muted-foreground">
-                  <th className="px-4 py-3 font-medium">Coin</th>
-                  <th className="px-4 py-3 font-medium text-right">Balance</th>
-                  <th className="px-4 py-3 font-medium text-right">Value</th>
-                  <th className="px-4 py-3 font-medium text-right">P&L</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {holdings.slice(0, 5).map((holding) => (
-                  <tr key={holding.symbol} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {holding.logo ? (
-                          <img src={holding.logo} alt={holding.symbol} className="w-6 h-6 rounded-full" onError={(e) => e.currentTarget.src = 'https://via.placeholder.com/40'} />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-purple-500/20 flex items-center justify-center text-xs font-bold">
-                            {holding.symbol.charAt(0)}
-                          </div>
-                        )}
-                        <p className="font-medium text-sm">{holding.symbol}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm font-mono">
-                      {holding.balance}
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm font-bold">
-                      ${holding.currentValue.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-sm">
-                      <span className={holding.pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                        {holding.pnl >= 0 ? '+' : ''}{holding.pnl.toFixed(2)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-card border border-border rounded-lg p-12 text-center">
-          <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No holdings yet</p>
-          <Button 
-            className="mt-4 bg-blue-600 hover:bg-blue-700"
-            onClick={() => handleTabClick("trading")}
-          >
-            Start Trading
-          </Button>
-        </div>
-      )}
-    </div>
-  </div>
-)}
-
-        {/* Trading Tab */}
+        {/* TRADING TAB */}
         {activeTab === "trading" && (
           <div>
             {/* Portfolio Summary Cards */}
@@ -799,7 +817,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Account Tab */}
+        {/* ACCOUNT TAB */}
         {activeTab === "account" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-card border border-border rounded-lg p-6">
@@ -831,7 +849,7 @@ const Dashboard = () => {
                 </div>
                 <Button 
                   variant="outline" 
-                  className="w-full mt-4 border-red-900/50 text-red-400"
+                  className="w-full mt-4 border-red-900/50 text-red-400 hover:bg-red-900/20"
                   onClick={() => {
                     localStorage.removeItem("walletToken");
                     localStorage.removeItem("walletAddress");
@@ -842,25 +860,47 @@ const Dashboard = () => {
                 </Button>
               </div>
             </div>
+
+            <div className="bg-card border border-border rounded-lg p-6">
+              <h3 className="text-lg font-semibold mb-6">Account Statistics</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Total Trades</span>
+                  <span className="text-lg font-bold">{walletDetails?.totalTrade || 0}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Login Count</span>
+                  <span className="text-lg font-bold">{walletDetails?.loginCount || 0}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Active Holdings</span>
+                  <span className="text-lg font-bold">{holdings.length}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Portfolio Value</span>
+                  <span className="text-lg font-bold text-blue-400">${totalPortfolioValue.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Other Tabs */}
+        {/* PREMIUM FEATURE TABS */}
         {(activeTab === "history" || activeTab === "bots" || activeTab === "alerts") && (
           <div className="flex flex-col items-center justify-center py-24 space-y-6">
             <div className="text-6xl">🔒</div>
             <h2 className="text-2xl font-bold text-center">Premium Feature</h2>
             <p className="text-muted-foreground text-center max-w-md">
-              Upgrade your subscription to access this feature.
+              Upgrade your subscription to access this feature and unlock advanced trading tools.
             </p>
             <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold px-8 py-3" onClick={() => window.location.href = "/pricing"}>
-              Subscribe Now
+              View Pricing Plans
             </Button>
           </div>
         )}
       </main>
 
-      {/* Trade Modal with Chart */}
+      {/* TRADE MODAL WITH CHART */}
       {tradeModal && selectedCoin && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
