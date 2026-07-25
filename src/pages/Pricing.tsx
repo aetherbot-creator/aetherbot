@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ const Pricing = () => {
       name: "Gold",
       emoji: "🥇",
       sol: 2,
+      price: 199,
       color: "from-yellow-600/20 to-yellow-500/5",
       border: "border-yellow-600/40",
       badge: "bg-yellow-500/20 text-yellow-400",
@@ -31,6 +33,7 @@ const Pricing = () => {
       name: "Diamond",
       emoji: "💎",
       sol: 3.5,
+      price: 349,
       color: "from-blue-600/20 to-blue-500/5",
       border: "border-blue-500/40",
       badge: "bg-blue-500/20 text-blue-300",
@@ -49,6 +52,7 @@ const Pricing = () => {
       name: "VIP",
       emoji: "👑",
       sol: 5,
+      price: 499,
       color: "from-purple-600/20 to-purple-500/5",
       border: "border-purple-500/40",
       badge: "bg-purple-500/20 text-purple-300",
@@ -175,19 +179,9 @@ const Pricing = () => {
               <p className="text-muted-foreground">Send exactly <span className="text-green-400 font-bold">{selectedTier.sol} SOL</span></p>
             </div>
 
-            {/* QR Code */}
-            <div className="flex justify-center mb-6 p-4 bg-muted rounded-lg">
-              <QRCode 
-                value={`solana:${SOLANA_PAYMENT_WALLET}?amount=${selectedTier.sol}`}
-                size={200}
-                level="H"
-                includeMargin={true}
-              />
-            </div>
-
             {/* Wallet Address */}
             <div className="mb-6">
-              <p className="text-sm text-muted-foreground mb-2">Or send to this address:</p>
+              <p className="text-sm text-muted-foreground mb-2">Send to this address:</p>
               <div className="flex items-center gap-2 bg-muted rounded-lg p-3">
                 <code className="text-xs font-mono flex-1 truncate">
                   {SOLANA_PAYMENT_WALLET}
@@ -219,8 +213,8 @@ const Pricing = () => {
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-6">
               <h4 className="font-semibold text-sm mb-3 text-yellow-400">📋 Next Steps:</h4>
               <ol className="text-xs space-y-2 text-muted-foreground">
-                <li>1. Scan QR code with your Solana wallet (Phantom, Magic Eden, etc.)</li>
-                <li>2. Or manually send {selectedTier.sol} SOL to the address above</li>
+                <li>1. Open your Solana wallet (Phantom, Magic Eden, etc.)</li>
+                <li>2. Send {selectedTier.sol} SOL to the address above</li>
                 <li>3. Wait for transaction to confirm</li>
                 <li>4. Copy your transaction hash (TXID)</li>
                 <li>5. Contact support with your TXID and wallet address</li>
