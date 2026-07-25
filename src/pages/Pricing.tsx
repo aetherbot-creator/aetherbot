@@ -2,8 +2,6 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Check, X, ArrowLeft, Copy } from "lucide-react";
-import { useState } from "react";
-import QRCode from "qrcode.react";
 
 const SOLANA_PAYMENT_WALLET = "S8NreX5AG6cRzXsv16vMfVGDP6Xff3YzRVBhBVxpakXRm"; // Replace with your wallet
 
