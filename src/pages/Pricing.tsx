@@ -1,18 +1,22 @@
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Check, X, ArrowLeft } from "lucide-react";
+import { Check, X, ArrowLeft, Copy } from "lucide-react";
 import { useState } from "react";
+import QRCode from "qrcode.react";
+
+const SOLANA_PAYMENT_WALLET = "S8NreX5AG6cRzXsv16vMfVGDP6Xff3YzRVBhBVxpakXRm"; // Replace with your wallet
 
 const Pricing = () => {
   const [showModal, setShowModal] = useState(false);
-  const [selectedTier, setSelectedTier] = useState("");
+  const [selectedTier, setSelectedTier] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
 
   const tiers = [
     {
       name: "Gold",
       emoji: "🥇",
-      price: 100,
+      sol: 2,
       color: "from-yellow-600/20 to-yellow-500/5",
       border: "border-yellow-600/40",
       badge: "bg-yellow-500/20 text-yellow-400",
@@ -28,7 +32,7 @@ const Pricing = () => {
     {
       name: "Diamond",
       emoji: "💎",
-      price: 300,
+      sol: 3.5,
       color: "from-blue-600/20 to-blue-500/5",
       border: "border-blue-500/40",
       badge: "bg-blue-500/20 text-blue-300",
@@ -46,7 +50,7 @@ const Pricing = () => {
     {
       name: "VIP",
       emoji: "👑",
-      price: 500,
+      sol: 5,
       color: "from-purple-600/20 to-purple-500/5",
       border: "border-purple-500/40",
       badge: "bg-purple-500/20 text-purple-300",
@@ -63,9 +67,15 @@ const Pricing = () => {
     },
   ];
 
-  const handleSubscribe = (tierName: string) => {
-    setSelectedTier(tierName);
+  const handleSubscribe = (tier: any) => {
+    setSelectedTier(tier);
     setShowModal(true);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(SOLANA_PAYMENT_WALLET);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -85,7 +95,7 @@ const Pricing = () => {
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold mb-4">Choose Your Plan</h1>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Unlock the full power of Aetherbot. Select the tier that fits your trading goals and contact our support team to get started.
+            Unlock the full power of Aetherbot. Select the tier that fits your trading goals.
           </p>
         </div>
 
@@ -110,8 +120,13 @@ const Pricing = () => {
                   {tier.name.toUpperCase()} TIER
                 </span>
                 <div className="mt-4">
-                  <span className="text-5xl font-bold">${tier.price}</span>
-                  <span className="text-muted-foreground">/month</span>
+                  <div className="mb-2">
+                    <span className="text-4xl font-bold">${tier.price}</span>
+                    <span className="text-muted-foreground">/month</span>
+                  </div>
+                  <div className="text-sm text-green-400 font-semibold">
+                    {tier.sol} SOL
+                  </div>
                 </div>
               </div>
 
@@ -126,7 +141,7 @@ const Pricing = () => {
 
               <Button
                 className={`w-full font-bold py-6 text-base ${tier.button}`}
-                onClick={() => handleSubscribe(tier.name)}
+                onClick={() => handleSubscribe(tier)}
               >
                 Subscribe to {tier.name} Tier
               </Button>
@@ -136,38 +151,119 @@ const Pricing = () => {
 
         {/* Bottom Note */}
         <div className="text-center text-sm text-muted-foreground max-w-xl mx-auto">
-          <p>All plans are billed monthly. Contact our support team to activate your subscription.</p>
+          <p>All plans are billed monthly. After payment, contact support with your transaction hash to activate.</p>
         </div>
       </main>
 
-      {/* Subscribe Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-          <div className="bg-card border border-border rounded-2xl p-10 max-w-md w-full mx-4 text-center shadow-2xl">
+      {/* Subscribe Modal with Solana Payment */}
+      {showModal && selectedTier && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            {/* Close Button */}
             <button
-              onClick={() => setShowModal(false)}
+              onClick={() => {
+                setShowModal(false);
+                setSelectedTier(null);
+              }}
               className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
             >
               <X className="h-5 w-5" />
             </button>
-            <div className="text-5xl mb-4">
-              {selectedTier === "Gold" ? "🥇" : selectedTier === "Diamond" ? "💎" : "👑"}
+
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="text-5xl mb-3">{selectedTier.emoji}</div>
+              <h2 className="text-2xl font-bold mb-2">{selectedTier.name} Tier</h2>
+              <p className="text-muted-foreground">Send exactly <span className="text-green-400 font-bold">{selectedTier.sol} SOL</span></p>
             </div>
-            <h2 className="text-2xl font-bold mb-3">{selectedTier} Tier Subscription</h2>
-            <p className="text-muted-foreground mb-6">
-              To subscribe to the <strong>{selectedTier} Tier</strong>, please contact our support team. We will activate your subscription and get you started right away.
+
+            {/* QR Code */}
+            <div className="flex justify-center mb-6 p-4 bg-muted rounded-lg">
+              <QRCode 
+                value={`solana:${SOLANA_PAYMENT_WALLET}?amount=${selectedTier.sol}`}
+                size={200}
+                level="H"
+                includeMargin={true}
+              />
+            </div>
+
+            {/* Wallet Address */}
+            <div className="mb-6">
+              <p className="text-sm text-muted-foreground mb-2">Or send to this address:</p>
+              <div className="flex items-center gap-2 bg-muted rounded-lg p-3">
+                <code className="text-xs font-mono flex-1 truncate">
+                  {SOLANA_PAYMENT_WALLET}
+                </code>
+                <button
+                  onClick={copyToClipboard}
+                  className="text-primary hover:text-primary/80 flex-shrink-0"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+              </div>
+              {copied && <p className="text-xs text-green-400 mt-2">✓ Copied to clipboard</p>}
+            </div>
+
+            {/* Amount to Send */}
+            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 mb-6">
+              <p className="text-sm text-muted-foreground mb-1">Amount to send</p>
+              <p className="text-3xl font-bold text-green-400">{selectedTier.sol} SOL</p>
+              <p className="text-xs text-muted-foreground mt-1">≈ ${selectedTier.price}</p>
+            </div>
+
+            {/* Duration */}
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
+              <p className="text-sm text-muted-foreground mb-1">Subscription Duration</p>
+              <p className="text-xl font-bold text-blue-400">1 Month</p>
+            </div>
+
+            {/* Instructions */}
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 mb-6">
+              <h4 className="font-semibold text-sm mb-3 text-yellow-400">📋 Next Steps:</h4>
+              <ol className="text-xs space-y-2 text-muted-foreground">
+                <li>1. Scan QR code with your Solana wallet (Phantom, Magic Eden, etc.)</li>
+                <li>2. Or manually send {selectedTier.sol} SOL to the address above</li>
+                <li>3. Wait for transaction to confirm</li>
+                <li>4. Copy your transaction hash (TXID)</li>
+                <li>5. Contact support with your TXID and wallet address</li>
+              </ol>
+            </div>
+
+            {/* Buttons */}
+            <div className="space-y-3">
+              <Button 
+                className="w-full bg-green-600 hover:bg-green-700 font-bold py-6"
+                onClick={() => {
+                  window.open('https://phantom.app', '_blank');
+                }}
+              >
+                🔗 Open Phantom Wallet
+              </Button>
+              <Button 
+                variant="outline"
+                className="w-full font-bold py-6"
+                onClick={() => {
+                  window.location.href = "/support";
+                }}
+              >
+                💬 Contact Support
+              </Button>
+              <Button 
+                variant="ghost"
+                className="w-full font-bold py-6"
+                onClick={() => {
+                  setShowModal(false);
+                  setSelectedTier(null);
+                }}
+              >
+                Close
+              </Button>
+            </div>
+
+            {/* Warning */}
+            <p className="text-xs text-muted-foreground text-center mt-4">
+              ⚠️ Keep your transaction hash safe. You'll need it to contact support.
             </p>
-            <div className="bg-muted/50 border border-border rounded-lg p-4 mb-6">
-              <p className="text-sm text-muted-foreground">
-                📧 Contact support to complete your subscription and unlock full access to Aetherbot.
-              </p>
-            </div>
-            <Button
-              className="w-full font-bold py-6 bg-yellow-500 hover:bg-yellow-600 text-black"
-              onClick={() => setShowModal(false)}
-            >
-              Close
-            </Button>
           </div>
         </div>
       )}
