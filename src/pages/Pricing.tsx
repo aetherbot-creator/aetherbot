@@ -51,7 +51,7 @@ const Pricing = () => {
     {
       name: "Diamond",
       emoji: "💎",
-      sol: 3.5,
+      sol: 4,
       color: "from-blue-600/20 to-blue-500/5",
       border: "border-blue-500/40",
       badge: "bg-blue-500/20 text-blue-300",
@@ -69,7 +69,7 @@ const Pricing = () => {
     {
       name: "VIP",
       emoji: "👑",
-      sol: 5,
+      sol: 7,
       color: "from-purple-600/20 to-purple-500/5",
       border: "border-purple-500/40",
       badge: "bg-purple-500/20 text-purple-300",
