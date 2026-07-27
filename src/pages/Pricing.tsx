@@ -4,7 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Check, X, ArrowLeft, Copy } from "lucide-react";
 
-const SOLANA_PAYMENT_WALLET = "S8NreX5AG6cRzXsv16vMfVGDP6Xff3YzRVBhBVxpakXRm"; // Replace with your wallet
+const SOLANA_PAYMENT_WALLET = "8NreX5AG6cRzXsv16vMfVGDP6Xff3YzRVBhBVxpakXRm"; // Replace with your wallet
 
 const Pricing = () => {
   const [showModal, setShowModal] = useState(false);
