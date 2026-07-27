@@ -39,18 +39,12 @@ const Dashboard = () => {
     const priceInterval = setInterval(fetchSolanaPrice, 30000);
     return () => clearInterval(priceInterval);
   }, []);
-
-  useEffect(() => {
-    if (activeTab === 'trading') {
-      fetchMemcoins();
-      fetchNewTokens();
-      const interval = setInterval(() => {
-        fetchMemcoins();
-        fetchNewTokens();
-      }, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [activeTab]);
+useEffect(() => {
+  if (activeTab === 'trading') {
+    fetchMemcoins();
+    fetchNewTokens();
+  }
+}, [activeTab]);
 
   const fetchSolanaPrice = async () => {
     try {
