@@ -53,13 +53,9 @@ export const Hero = () => {
       const response = await otpAPI.verifyOTP(userEmail, otp);
       
       if (response.success) {
-        // Cache the verified email
         localStorage.setItem("verifiedEmail", response.email);
-        
-        // Close OTP dialog first
         setShowOTPDialog(false);
         
-        // Update state after a small delay to ensure dialog closes
         setTimeout(() => {
           setIsEmailVerified(true);
           setUserEmail(response.email);
@@ -85,26 +81,28 @@ export const Hero = () => {
   };
 
   const handleWalletConnected = (response: WalletConnectResponse) => {
-    // Navigate to dashboard immediately after successful wallet connection
     toast.success("Wallet connected successfully!");
     navigate("/dashboard");
   };
 
   return (
     <>
-      <section className="min-h-screen flex items-center justify-center relative overflow-hidden pt-20">
+      <section className="min-h-[90vh] flex items-center justify-center relative overflow-hidden pt-20">
         <div className="container mx-auto px-6 text-center relative z-10">
           <div className="animate-fade-in">
-            <h1 className="text-7xl md:text-8xl font-bold mb-6 gradient-text glow-text">
-              Be First To The
+            {/* NEW HERO TITLE */}
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 gradient-text glow-text">
+              Trade Meme Coins & Stocks.
               <br />
-              Next Big Play
+              Win Like a Pro.
             </h1>
             
+            {/* NEW SUBTITLE */}
             <p className="text-xl md:text-2xl text-secondary mb-12 max-w-3xl mx-auto">
-              20,000+ tokens launch daily. AetherBot finds the 0.1% that actually run.
+              Automated trading bots, real-time alerts, and advanced charting. The only platform built for both Solana's fastest movers AND traditional stocks.
             </p>
             
+            {/* BUTTONS - KEEPING YOUR FUNCTIONALITY */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
                 size="lg"
@@ -119,10 +117,12 @@ export const Hero = () => {
                 ) : (
                   <>
                     <LogIn className="mr-2 h-5 w-5" />
-                    Login / Signup
+                    Start Trading Free →
                   </>
                 )}
               </Button>
+              
+              {/* VIEW PERFORMANCE BUTTON - SCROLLS TO PLATFORMS SECTION */}
               <Button 
                 size="lg"
                 variant="outline"
@@ -135,8 +135,24 @@ export const Hero = () => {
             </div>
           </div>
           
-          {/* Floating code snippets */}
-          <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+          {/* STATS - NEW DESIGN */}
+          <div className="mt-20 grid grid-cols-3 gap-8 max-w-3xl mx-auto">
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-white">50K+</div>
+              <div className="text-sm text-secondary">Active Traders</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-white">$2.3B</div>
+              <div className="text-sm text-secondary">Traded Volume</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-white">2,477</div>
+              <div className="text-sm text-secondary">Bot Executions</div>
+            </div>
+          </div>
+
+          {/* FLOATING CODE SNIPPETS - KEPT */}
+          <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
             {[
               "fees paid: 2.4 SOL",
               "fresh wallet hold: 52%",
@@ -155,6 +171,7 @@ export const Hero = () => {
         </div>
       </section>
 
+      {/* DIALOGS - KEPT UNCHANGED */}
       <LoginDialog 
         open={showLoginDialog}
         onOpenChange={setShowLoginDialog}
