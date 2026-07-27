@@ -1,6 +1,16 @@
-import { Link } from "react-router-dom";
-
 const NewFeatures = () => {
+  // Function to trigger the login dialog from the Hero component
+  const openLoginDialog = () => {
+    // Find and click the hidden login trigger button
+    const loginTrigger = document.getElementById('hero-login-trigger');
+    if (loginTrigger) {
+      loginTrigger.click();
+    } else {
+      // Fallback: navigate to login page
+      window.location.href = '/login';
+    }
+  };
+
   return (
     <div style={{ padding: '60px 0', backgroundColor: '#0a0a0f', color: '#ffffff' }}>
       
@@ -221,8 +231,8 @@ const NewFeatures = () => {
           <p style={{ fontSize: '20px', color: '#a0a0b0', maxWidth: '600px', margin: '0 auto 32px' }}>
             Join 50,000+ traders catching moonshots and building wealth.
           </p>
-          <Link to="/login">
-            <button style={{
+          <button
+            style={{
               padding: '16px 48px',
               background: 'linear-gradient(135deg, #6F00FF, #00D4FF)',
               color: 'white',
@@ -240,10 +250,11 @@ const NewFeatures = () => {
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'scale(1)';
               e.currentTarget.style.boxShadow = 'none';
-            }}>
-              Launch Dashboard →
-            </button>
-          </Link>
+            }}
+            onClick={openLoginDialog}
+          >
+            Launch Dashboard →
+          </button>
         </div>
       </div>
 
