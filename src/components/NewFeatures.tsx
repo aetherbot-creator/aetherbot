@@ -1,12 +1,10 @@
 const NewFeatures = () => {
   // Function to trigger the login dialog from the Hero component
   const openLoginDialog = () => {
-    // Find and click the hidden login trigger button
     const loginTrigger = document.getElementById('hero-login-trigger');
     if (loginTrigger) {
       loginTrigger.click();
     } else {
-      // Fallback: navigate to login page
       window.location.href = '/login';
     }
   };
