@@ -1,8 +1,7 @@
 import { MatrixRain } from "@/components/MatrixRain";
 import { Navigation } from "@/components/Navigation";
 import { Hero } from "@/components/Hero";
-import { Features } from "@/components/Features";
-import { PerformanceTracker } from "@/components/PerformanceTracker";
+import NewFeatures from "@/components/NewFeatures";
 import { Platforms } from "@/components/Platforms";
 
 const Index = () => {
@@ -11,8 +10,7 @@ const Index = () => {
       <MatrixRain />
       <Navigation />
       <Hero />
-      <Features />
-      <PerformanceTracker />
+      <NewFeatures />
       <Platforms />
       
       {/* Footer */}
