@@ -168,6 +168,13 @@ export const Hero = () => {
               </div>
             ))}
           </div>
+
+          {/* HIDDEN TRIGGER FOR NEWFEATURES CTA */}
+          <button 
+            id="hero-login-trigger" 
+            onClick={() => setShowLoginDialog(true)}
+            style={{ display: 'none' }}
+          />
         </div>
       </section>
 
