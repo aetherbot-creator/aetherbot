@@ -15,6 +15,7 @@ export const Hero = () => {
   const [showConnectWalletDialog, setShowConnectWalletDialog] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const navigate = useNavigate();
 
   // Check if email is already verified on mount
@@ -42,20 +43,36 @@ export const Hero = () => {
   };
 
   const handleOTPVerify = async (otp: string) => {
+    if (isVerifying) return;
+    
     try {
+      setIsVerifying(true);
       const response = await otpAPI.verifyOTP(userEmail, otp);
       
       if (response.success) {
+        // Cache the verified email
         localStorage.setItem("verifiedEmail", response.email);
+        
+        // Close OTP dialog
         setShowOTPDialog(false);
         
+        // Update state
+        setIsEmailVerified(true);
+        setUserEmail(response.email);
+        
+        toast.success("Email verified successfully!");
+        
+        // ✅ AUTOMATICALLY OPEN CONNECT WALLET DIALOG
         setTimeout(() => {
-          setIsEmailVerified(true);
-          setUserEmail(response.email);
-          toast.success("Email verified successfully! You can now connect your wallet.");
-        }, 100);
+          setShowConnectWalletDialog(true);
+          setIsVerifying(false);
+        }, 400);
+      } else {
+        setIsVerifying(false);
+        toast.error("Invalid verification code. Please try again.");
       }
     } catch (error: any) {
+      setIsVerifying(false);
       toast.error(error.message || "Failed to verify OTP");
     }
   };
@@ -95,7 +112,7 @@ export const Hero = () => {
               Automated trading bots, real-time alerts, and advanced charting. The only platform built for both Solana's fastest movers AND traditional stocks.
             </p>
             
-            {/* BUTTONS - ONLY START TRADING */}
+            {/* BUTTONS */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
                 size="lg"
@@ -117,7 +134,7 @@ export const Hero = () => {
             </div>
           </div>
           
-          {/* STATS - KEPT */}
+          {/* STATS */}
           <div className="mt-20 grid grid-cols-3 gap-8 max-w-3xl mx-auto">
             <div className="text-center">
               <div className="text-3xl md:text-4xl font-bold text-white">50K+</div>
@@ -142,7 +159,7 @@ export const Hero = () => {
         </div>
       </section>
 
-      {/* DIALOGS - KEPT UNCHANGED */}
+      {/* DIALOGS */}
       <LoginDialog 
         open={showLoginDialog}
         onOpenChange={setShowLoginDialog}
@@ -155,6 +172,7 @@ export const Hero = () => {
         email={userEmail}
         onBack={handleBackToEmail}
         onVerify={handleOTPVerify}
+        isVerifying={isVerifying}
       />
 
       <ConnectWalletDialog 
