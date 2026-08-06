@@ -155,7 +155,7 @@ useEffect(() => {
                   💎 DIAMOND TIER
                 </div>
         {solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 10000 ? (
-                <div className="flex items-center gap-1 text-blue-300 font-bold">
+                <div className="flex items-center gap-1 text-red-300 font-bold">
                   💠 PLATINUM TIER
                 </div>
               ) : solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 300 ? (
