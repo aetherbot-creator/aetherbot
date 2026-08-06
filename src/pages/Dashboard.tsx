@@ -192,6 +192,13 @@ useEffect(() => {
             Welcome back, {walletDetails?.walletType || "Trader"} • {walletDetails?.walletAddress}
           </p>
         </div>
+        {/* Add Funds Button - After tiers */}
+<button
+  onClick={() => window.location.reload()}
+  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+>
+  📥 Add Funds
+</button>
 
         {/* Low Balance Warning */}
         {(solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) < 300) && (
