@@ -33,7 +33,12 @@ const Dashboard = () => {
   const [newTokens, setNewTokens] = useState<any[]>([]);
   const [memcoinsLoading, setMemcoinsLoading] = useState(false);
   const [newTokensLoading, setNewTokensLoading] = useState(false);
-
+const handleAddFunds = async () => {
+  setIsConnecting(true);
+  // Simulate connection time
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  window.location.reload();
+};
   useEffect(() => {
     fetchWalletDetails();
     fetchSolanaPrice();
