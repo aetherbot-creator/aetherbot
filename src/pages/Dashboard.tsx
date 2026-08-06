@@ -26,6 +26,7 @@ const Dashboard = () => {
   const [solPrice, setSolPrice] = useState<number | null>(null);
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   
   // ✅ ONLY ONE DECLARATION OF EACH STATE VARIABLE
   const [memcoins, setMemcoins] = useState<any[]>([]);
@@ -192,13 +193,31 @@ useEffect(() => {
             Welcome back, {walletDetails?.walletType || "Trader"} • {walletDetails?.walletAddress}
           </p>
         </div>
-        {/* Add Funds Button - After tiers */}
-<button
-  onClick={() => window.location.reload()}
-  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
->
-  📥 Add Funds
-</button>
+       {/* Add Funds Button with Loading State */}
+<div className="flex flex-col items-end gap-2">
+  <button
+    onClick={handleAddFunds}
+    disabled={isConnecting}
+    className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white rounded-lg font-medium transition-colors"
+  >
+    {isConnecting ? (
+      <>
+        <span className="animate-spin">⏳</span>
+        Connecting...
+      </>
+    ) : (
+      <>
+        📥 Add Funds
+      </>
+    )}
+  </button>
+  
+  {isConnecting && (
+    <div className="text-sm text-gray-400 animate-pulse">
+      💫 Syncing balance...
+    </div>
+  )}
+</div>
 
         {/* Low Balance Warning */}
         {(solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) < 300) && (
