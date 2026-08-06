@@ -219,7 +219,7 @@ useEffect(() => {
   
   {isConnecting && (
     <div className="text-sm text-gray-400 animate-pulse">
-      💫 Syncing balance...
+      Please wait.. Syncing balance...
     </div>
   )}
 </div>
