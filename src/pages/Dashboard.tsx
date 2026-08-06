@@ -166,7 +166,6 @@ useEffect(() => {
   <div className="flex items-center gap-1 text-orange-400 font-bold">
     🥉 BRONZE TIER
   </div>
-)}
               )}
               {(walletDetails?.AetherbotBalance ?? 0) < 0.5 && (
                 <div className="flex items-center gap-1 text-red-400">
