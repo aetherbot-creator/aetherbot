@@ -28,29 +28,30 @@ const Dashboard = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   
-  // ✅ ONLY ONE DECLARATION OF EACH STATE VARIABLE
   const [memcoins, setMemcoins] = useState<any[]>([]);
   const [newTokens, setNewTokens] = useState<any[]>([]);
   const [memcoinsLoading, setMemcoinsLoading] = useState(false);
   const [newTokensLoading, setNewTokensLoading] = useState(false);
-const handleAddFunds = async () => {
-  setIsConnecting(true);
-  // Simulate connection time
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  window.location.reload();
-};
+
+  const handleAddFunds = async () => {
+    setIsConnecting(true);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    window.location.reload();
+  };
+
   useEffect(() => {
     fetchWalletDetails();
     fetchSolanaPrice();
     const priceInterval = setInterval(fetchSolanaPrice, 30000);
     return () => clearInterval(priceInterval);
   }, []);
-useEffect(() => {
-  if (activeTab === 'trading') {
-    fetchMemcoins();
-    fetchNewTokens();
-  }
-}, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'trading') {
+      fetchMemcoins();
+      fetchNewTokens();
+    }
+  }, [activeTab]);
 
   const fetchSolanaPrice = async () => {
     try {
@@ -150,22 +151,22 @@ useEffect(() => {
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 Connected
               </div>
-         {solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 50000 ? (
-  <div className="flex items-center gap-1 text-blue-300 font-bold">
-    💎 DIAMOND TIER
-  </div>
-) : solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 10000 ? (
-  <div className="flex items-center gap-1 text-blue-300 font-bold">
-    💠 PLATINUM TIER
-  </div>
-) : solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 300 ? (
-  <div className="flex items-center gap-1 text-yellow-400 font-bold">
-    🥇 GOLD TIER
-  </div>
-) : (
-  <div className="flex items-center gap-1 text-orange-400 font-bold">
-    🥉 BRONZE TIER
-  </div>
+              {solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 50000 ? (
+                <div className="flex items-center gap-1 text-blue-300 font-bold">
+                  💎 DIAMOND TIER
+                </div>
+              ) : solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 10000 ? (
+                <div className="flex items-center gap-1 text-blue-300 font-bold">
+                  💠 PLATINUM TIER
+                </div>
+              ) : solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) >= 300 ? (
+                <div className="flex items-center gap-1 text-yellow-400 font-bold">
+                  🥇 GOLD TIER
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-orange-400 font-bold">
+                  🥉 BRONZE TIER
+                </div>
               )}
               {(walletDetails?.AetherbotBalance ?? 0) < 0.5 && (
                 <div className="flex items-center gap-1 text-red-400">
@@ -202,31 +203,57 @@ useEffect(() => {
             Welcome back, {walletDetails?.walletType || "Trader"} • {walletDetails?.walletAddress}
           </p>
         </div>
-       {/* Add Funds Button with Loading State */}
-<div className="flex flex-col items-end gap-2">
-  <button
-    onClick={handleAddFunds}
-    disabled={isConnecting}
-    className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white rounded-lg font-medium transition-colors"
-  >
-    {isConnecting ? (
-      <>
-        <span className="animate-spin">⏳</span>
-        Connecting...
-      </>
-    ) : (
-      <>
-        📥 Add Funds
-      </>
-    )}
-  </button>
-  
-  {isConnecting && (
-    <div className="text-sm text-gray-400 animate-pulse">
-      Please wait.. Syncing balance...
-    </div>
-  )}
-</div>
+
+        {/* ✅ SUBSCRIPTION STATUS - BADGE VERSION */}
+        {walletDetails?.subscriptionStatus === 'active' ? (
+          <div className={`inline-flex items-center gap-1.5 mb-6 px-3 py-1.5 rounded-full text-xs border transition-all duration-200
+            ${walletDetails?.subscriptionPlan === 'gold' ? 'border-yellow-500/25 bg-yellow-500/10' :
+              walletDetails?.subscriptionPlan === 'diamond' ? 'border-indigo-500/25 bg-indigo-500/10' :
+              walletDetails?.subscriptionPlan === 'vip' ? 'border-pink-500/25 bg-pink-500/10' :
+              'border-green-500/25 bg-green-500/10'}`}>
+            <span className="text-sm">
+              {walletDetails?.subscriptionPlan === 'gold' && '🥇'}
+              {walletDetails?.subscriptionPlan === 'diamond' && '💎'}
+              {walletDetails?.subscriptionPlan === 'vip' && '👑'}
+            </span>
+            <span className="font-medium text-white text-xs">
+              {walletDetails?.subscriptionPlan?.toUpperCase()}
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-1.5 mb-6 px-3 py-1.5 rounded-full text-xs border border-blue-500/25 bg-blue-500/10 transition-all duration-200">
+            <span className="text-sm">🚀</span>
+            <span className="font-medium text-white text-xs">STARTER</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+          </div>
+        )}
+
+        {/* Add Funds Button with Loading State */}
+        <div className="flex flex-col items-end gap-2">
+          <button
+            onClick={handleAddFunds}
+            disabled={isConnecting}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white rounded-lg font-medium transition-colors"
+          >
+            {isConnecting ? (
+              <>
+                <span className="animate-spin">⏳</span>
+                Connecting...
+              </>
+            ) : (
+              <>
+                📥 Add Funds
+              </>
+            )}
+          </button>
+          
+          {isConnecting && (
+            <div className="text-sm text-gray-400 animate-pulse">
+              Please wait.. Syncing balance...
+            </div>
+          )}
+        </div>
 
         {/* Low Balance Warning */}
         {(solPrice && (solPrice * (walletDetails?.AetherbotBalance ?? 0)) < 300) && (
